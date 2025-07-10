@@ -170,4 +170,52 @@ Micro.blog
 
 ---
 
+## 📋 **Implementation Status**
+
+### **Phase 2 Development State**
+- **Status**: Ready for implementation
+- **Detailed Plan**: See `002_Implementation_Plan.md` for ATDD implementation guide
+- **Development Protocols**: Established in `CLAUDE.md` - mandatory quality gates and ATDD workflow
+
+### **Goal 1: Local Content Creation (Week 1)**
+- [ ] Add "New Post" command to tree view toolbar
+- [ ] Create workspace content folder (./content/)
+- [ ] Generate markdown template with frontmatter (title, status, type)
+- [ ] Update tree view to show local files vs remote content
+- [ ] Add file watcher for local content changes
+
+### **Goal 2: Draft Editing Workflow (Week 1-2)**
+- [ ] Add "Edit Draft" command to draft posts in tree view
+- [ ] Download remote draft content to local markdown file
+- [ ] Track sync status (Local, Remote, Modified) 
+- [ ] Update tree view icons to show sync status
+- [ ] Prevent editing published posts locally (read-only)
+
+### **Goal 3: Publishing Capability (Week 2-3)**
+- [ ] Add "Publish" command for local drafts
+- [ ] Implement Micropub `POST` for new posts
+- [ ] Implement Micropub `PUT` for draft updates  
+- [ ] Add frontmatter validation before publish
+- [ ] Update sync status after successful publish
+- [ ] Basic error handling for publish failures
+
+### **Goal 4: Simple Conflict Prevention (Week 3)**
+- [ ] Check remote draft status before local edit
+- [ ] Warn if remote draft newer than local
+- [ ] Simple "Remote has changes - download fresh copy?" dialog
+- [ ] Backup local changes before overwrite
+
+### **Testing & Validation**
+- [ ] New post creation and file generation
+- [ ] Draft download and local editing
+- [ ] Publish workflow with Micropub POST/PUT
+- [ ] Sync status accuracy
+- [ ] Conflict detection basics
+- [ ] Week 2 check-in with testers
+- [ ] Full workflow testing with same MVP testers
+
+---
+
 **🎯 This directly addresses tester feedback while keeping scope manageable and building on your solid MVP foundation.**
+
+**📋 Implementation Guide**: See `002_Implementation_Plan.md` for detailed ATDD approach, user scenarios, acceptance tests, and technical architecture.
