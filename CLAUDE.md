@@ -180,4 +180,88 @@ Cmd+Shift+P         # Command palette to test extension commands
 ### 🚀 **READY FOR PHASE 2**
 The extension is now fully functional for Phase 1 (read-only browsing) and ready for Phase 2 development (content editing and publishing).
 
+---
+
+## 🛡️ **DEVELOPMENT PROTOCOLS** (Mandatory for Phase 2+)
+
+### **Quality Gates (Non-Negotiable)**
+
+#### **Before ANY code changes:**
+1. Run `npm run compile` - ensure TypeScript compiles cleanly
+2. Run `npm test` - ensure all tests pass (currently 18 tests)
+3. Run `npm run lint` - ensure code style compliance
+4. **ALL must pass before making any changes**
+
+#### **After EVERY code change:**
+1. Re-run all three commands immediately
+2. Fix any failures before making additional changes  
+3. Only proceed when all checks are green
+4. **No exceptions - failing tests block all development**
+
+### **Failure Recovery Protocol**
+
+#### **When any command fails:**
+1. **STOP all development immediately**
+2. Analyze and identify the root cause
+3. Fix the specific issue that caused the failure
+4. Re-run the full test suite (`npm run compile && npm test && npm run lint`)
+5. Only continue development when everything passes
+
+#### **Never:**
+- Make additional changes while tests are failing
+- Batch multiple fixes together
+- Skip quality gates "just this once"
+- Commit failing code
+
+### **ATDD Workflow for New Features**
+
+#### **For each user-facing feature:**
+1. **Write user scenario first** - describe what user wants to accomplish
+2. **Convert to failing acceptance test** - test the complete user workflow
+3. **Implement minimal code** to make the test pass
+4. **Add supporting unit tests** as needed for implementation details
+5. **Refactor with test protection** - improve code while tests ensure no regressions
+
+#### **Example workflow:**
+```typescript
+// 1. User scenario: "User creates a new blog post"
+// 2. Acceptance test: 
+test('user can create and view new post', async () => {
+  // Test complete workflow from command to tree view
+});
+// 3. Implement just enough to pass test
+// 4. Add unit tests for components
+// 5. Refactor implementation
+```
+
+### **Incremental Development (Recommended)**
+
+#### **Change management:**
+- Make small, focused changes (one concept at a time)
+- Test after each logical change
+- Never batch unrelated modifications
+- Keep changes under 100 lines when possible
+
+#### **Benefits:**
+- Easier debugging (small change scope)
+- Safer rollback (minimal impact)
+- Better code review (focused changes)
+- Continuous validation (catch issues early)
+
+### **Documentation Update Requirements**
+
+#### **After feature completion:**
+1. **Update CLAUDE.md** with new patterns or architectural changes
+2. **Update README.md** if feature is user-facing
+3. **Update inline code documentation** for complex logic
+4. **Update test documentation** for new testing patterns
+
+#### **Documentation triggers:**
+- New commands or user-facing features
+- Changes to extension architecture
+- New testing patterns or tools
+- Bug fixes that required significant investigation
+
+---
+
 This document should be updated as the extension evolves, especially when adding new features or changing architecture.

@@ -12,7 +12,7 @@ suite('Extension Test Suite', () => {
 		test('Blog creation', () => {
 			const blog = Blog.create('example.micro.blog');
 			assert.strictEqual(blog.domain, 'example.micro.blog');
-			assert.strictEqual(blog.apiEndpoint, 'https://example.micro.blog/micropub');
+			assert.strictEqual(blog.apiEndpoint, 'https://micro.blog/micropub');
 		});
 
 		test('Post creation', () => {
