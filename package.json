@@ -1,0 +1,73 @@
+{
+  "name": "micro-blog-vscode",
+  "displayName": "Micro.blog",
+  "description": "A VS Code extension for micro.blog integration",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "microblog.configure",
+        "title": "Configure Micro.blog",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "microblog.refresh",
+        "title": "Refresh Content",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "microblog.test",
+        "title": "Test Micro.blog Extension"
+      }
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "microblogPosts",
+          "name": "Micro.blog Posts"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "microblog.configure",
+          "when": "view == microblogPosts",
+          "group": "navigation"
+        },
+        {
+          "command": "microblog.refresh",
+          "when": "view == microblogPosts && microblog:configured",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.74.0",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "18.x",
+    "@typescript-eslint/eslint-plugin": "^6.13.1",
+    "@typescript-eslint/parser": "^6.13.1",
+    "eslint": "^8.54.0",
+    "typescript": "^5.3.2",
+    "@vscode/test-cli": "^0.0.4",
+    "@vscode/test-electron": "^2.3.8"
+  }
+}

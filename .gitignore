@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+out/
+*.vsix
+
+# Compiled TypeScript files in test folder
+test/**/*.js
+test/**/*.js.map
+
+# VS Code test artifacts
+.vscode-test/
+
+# Logs
+*.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.idea/
+*.swp
+*.swo
+
+# Environment files
+.env
+.env.local
+.env.*.local
