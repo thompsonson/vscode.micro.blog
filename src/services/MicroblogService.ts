@@ -4,6 +4,7 @@ import { Post } from '../domain/Post';
 import { Credentials } from '../domain/Credentials';
 import { ApiClient } from './ApiClient';
 import { API_ENDPOINTS, STORAGE_KEYS } from '../config/constants';
+import { VerifyTokenResponse } from './ApiClient';
 
 export class MicroblogService {
 	private static readonly BLOG_CONFIG_KEY = STORAGE_KEYS.BLOG_CONFIG;
@@ -25,11 +26,16 @@ export class MicroblogService {
 		const credentials = new Credentials(appToken);
 		console.log(`[Micro.blog] App token validated`);
 		
-		// Validate credentials and fetch posts to discover domain
+		// Validate credentials using proper verification endpoint
 		const apiClient = new ApiClient(credentials);
 		
 		try {
-			console.log(`[Micro.blog] Validating credentials and fetching posts...`);
+			console.log(`[Micro.blog] Verifying credentials...`);
+			const verifyResponse = await apiClient.verifyToken(API_ENDPOINTS.TOKEN_VERIFY);
+			console.log(`[Micro.blog] Credentials verified for: ${verifyResponse.name} (@${verifyResponse.username})`);
+			
+			// Fetch posts to discover domain
+			console.log(`[Micro.blog] Fetching posts to discover domain...`);
 			const posts = await apiClient.fetchPosts(API_ENDPOINTS.MICROPUB_SOURCE);
 			console.log(`[Micro.blog] Successfully fetched ${posts.length} posts`);
 			
@@ -97,6 +103,34 @@ export class MicroblogService {
 		const blog = await this.getBlogConfiguration();
 		const credentials = await this.getCredentials();
 		return !!(blog && credentials);
+	}
+
+	async testConnection(): Promise<{ isValid: boolean; userInfo?: VerifyTokenResponse; postCount?: number; error?: string }> {
+		try {
+			const credentials = await this.getCredentials();
+			if (!credentials) {
+				return { isValid: false, error: 'No credentials configured. Please run "Configure Micro.blog" first.' };
+			}
+
+			const apiClient = new ApiClient(credentials);
+			
+			// Verify token
+			const userInfo = await apiClient.verifyToken(API_ENDPOINTS.TOKEN_VERIFY);
+			
+			// Get post count
+			const posts = await apiClient.fetchPosts(API_ENDPOINTS.MICROPUB_SOURCE);
+			
+			return {
+				isValid: true,
+				userInfo,
+				postCount: posts.length
+			};
+		} catch (error) {
+			return {
+				isValid: false,
+				error: error instanceof Error ? error.message : 'Unknown error occurred'
+			};
+		}
 	}
 
 	private async saveBlogConfiguration(blog: Blog): Promise<void> {

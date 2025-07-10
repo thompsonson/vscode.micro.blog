@@ -14,7 +14,8 @@ export class Blog {
 
 	static create(domain: string, name?: string): Blog {
 		const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
-		const apiEndpoint = `https://${cleanDomain}/micropub`;
+		// Always use the main micro.blog API endpoint - personal domains don't support micropub
+		const apiEndpoint = 'https://micro.blog/micropub';
 		const blogName = name || cleanDomain;
 		
 		return new Blog(cleanDomain, blogName, apiEndpoint);

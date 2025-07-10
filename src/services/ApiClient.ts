@@ -10,6 +10,13 @@ export interface MicropubResponse {
 	url?: string;
 }
 
+export interface VerifyTokenResponse {
+	name: string;
+	username: string;
+	avatar?: string;
+	error?: string;
+}
+
 export class ApiClient {
 	constructor(private credentials: Credentials) {}
 
@@ -78,6 +85,66 @@ export class ApiClient {
 			console.error(`[Micro.blog] Credential validation failed:`, error);
 			return false;
 		}
+	}
+
+	async verifyToken(endpoint: string): Promise<VerifyTokenResponse> {
+		const url = new URL(endpoint);
+		
+		console.log(`[Micro.blog] Verifying token at: ${url.hostname}${url.pathname}`);
+		
+		return new Promise((resolve, reject) => {
+			const postData = `token=${encodeURIComponent(this.credentials.appToken)}`;
+			
+			const options = {
+				hostname: url.hostname,
+				port: url.port || 443,
+				path: url.pathname,
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/x-www-form-urlencoded',
+					'Content-Length': Buffer.byteLength(postData),
+					'Accept': 'application/json'
+				}
+			};
+
+			const req = https.request(options, (res) => {
+				let data = '';
+				
+				res.on('data', (chunk) => {
+					data += chunk;
+				});
+				
+				res.on('end', () => {
+					try {
+						const response = JSON.parse(data) as VerifyTokenResponse;
+						
+						if (response.error) {
+							console.error(`[Micro.blog] Token verification failed: ${response.error}`);
+							reject(new Error(response.error));
+						} else {
+							console.log(`[Micro.blog] Token verified for user: ${response.name} (@${response.username})`);
+							resolve(response);
+						}
+					} catch (error) {
+						console.error(`[Micro.blog] Failed to parse verification response:`, error);
+						reject(new Error(`Failed to parse verification response: ${error}`));
+					}
+				});
+			});
+
+			req.on('error', (error) => {
+				console.error(`[Micro.blog] Network error during verification:`, error);
+				reject(new Error(`Network error: ${error.message}`));
+			});
+
+			req.setTimeout(TIMEOUTS.AUTH_VALIDATION, () => {
+				req.destroy();
+				reject(new Error('Token verification timeout'));
+			});
+
+			req.write(postData);
+			req.end();
+		});
 	}
 
 	private parseMicropubResponse(response: any): Post[] {

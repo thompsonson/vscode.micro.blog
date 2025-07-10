@@ -3,6 +3,7 @@
  */
 
 export const API_ENDPOINTS = {
+	TOKEN_VERIFY: 'https://micro.blog/account/verify',
 	MICROPUB_VERIFICATION: 'https://micro.blog/micropub',
 	MICROPUB_CONFIG: 'https://micro.blog/micropub?q=config',
 	MICROPUB_SOURCE: 'https://micro.blog/micropub?q=source'

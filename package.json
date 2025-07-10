@@ -9,7 +9,11 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onCommand:microblog.configure",
+    "onCommand:microblog.test",
+    "onView:microblogPosts"
+  ],
   "main": "./out/src/extension.js",
   "contributes": {
     "commands": [

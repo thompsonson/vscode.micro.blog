@@ -2,14 +2,17 @@
 
 ## Project Overview
 
-This is a VS Code extension for micro.blog integration built using **Domain Driven Design (DDD)** principles. The current MVP phase focuses on **read-only content browsing** with secure authentication.
+This is a VS Code extension for micro.blog integration built using **Domain Driven Design (DDD)** principles. **MVP COMPLETED** - fully functional read-only content browsing with secure authentication.
 
-### Current Status ✅
-- **Authentication**: Working with app token validation
-- **API Integration**: Successfully fetching posts via Micropub API
+### Current Status ✅ (v0.1.0 - MVP Complete)
+- **Authentication**: Working with proper `/account/verify` endpoint
+- **API Integration**: Successfully fetching posts via Micropub API with correct endpoint management
 - **Configuration**: Simplified token-only setup with auto-domain discovery
+- **UI Integration**: Tree view and content viewing fully implemented
 - **Security**: Clean logging without sensitive data exposure
-- **Testing**: Core business logic unit tests passing
+- **Testing**: 18 passing tests with comprehensive API mocking
+- **Distribution**: Packaged as VSIX and ready for user testing
+- **Bug Fixes**: API endpoint issue resolved (always use micro.blog/micropub)
 
 ## Architecture (DDD within VS Code Structure)
 
@@ -156,5 +159,25 @@ Cmd+Shift+P         # Command palette to test extension commands
 - **TypeScript** - Development language
 - **ESLint** - Code quality
 - **@vscode/test-cli** - Testing framework
+
+## 🎉 MVP Completion Status
+
+### ✅ **COMPLETED FEATURES**
+- **Full UI Integration**: Tree view showing Published/Drafts, click-to-view content
+- **Proper Authentication**: `/account/verify` endpoint integration
+- **Error Handling**: Clear error messages and recovery flows
+- **Comprehensive Testing**: 18 passing tests with API mocks
+- **Bug Resolution**: API endpoint issue fixed (personal domains → micro.blog endpoint)
+- **Distribution**: Ready as `micro-blog-vscode-0.1.0.vsix`
+
+### 🏗️ **ARCHITECTURE IMPROVEMENTS MADE**
+- **Enhanced API Client**: Added token verification method
+- **Improved Service Layer**: Better error handling and user feedback
+- **Fixed Domain Logic**: Blog entity always uses correct API endpoint
+- **Complete Provider Integration**: Tree and content providers fully wired
+- **Activation Events**: Proper lazy loading with VS Code best practices
+
+### 🚀 **READY FOR PHASE 2**
+The extension is now fully functional for Phase 1 (read-only browsing) and ready for Phase 2 development (content editing and publishing).
 
 This document should be updated as the extension evolves, especially when adding new features or changing architecture.
