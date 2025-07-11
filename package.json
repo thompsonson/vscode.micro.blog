@@ -13,6 +13,7 @@
     "onCommand:microblog.configure",
     "onCommand:microblog.test",
     "onCommand:microblog.newPost",
+    "onCommand:microblog.uploadImage",
     "onView:microblogPosts"
   ],
   "main": "./out/src/extension.js",
@@ -36,6 +37,11 @@
         "command": "microblog.newPost",
         "title": "New Post",
         "icon": "$(add)"
+      },
+      {
+        "command": "microblog.uploadImage",
+        "title": "Upload Image to Micro.blog",
+        "icon": "$(file-media)"
       },
       {
         "command": "microblog.publishPost",
@@ -74,6 +80,13 @@
           "command": "microblog.publishPost",
           "when": "view == microblogPosts && viewItem == localPost",
           "group": "publish"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "microblog.uploadImage",
+          "when": "resourceExtname =~ /\\.(jpg|jpeg|png|gif)$/i",
+          "group": "microblog"
         }
       ]
     }

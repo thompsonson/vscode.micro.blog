@@ -4,6 +4,8 @@ import { Blog } from '../../src/domain/Blog';
 import { Post } from '../../src/domain/Post';
 import { Credentials } from '../../src/domain/Credentials';
 import { LocalPost } from '../../src/domain/LocalPost';
+import { MediaAsset } from '../../src/domain/MediaAsset';
+import { UploadResult } from '../../src/domain/UploadResult';
 import { MicroblogService } from '../../src/services/MicroblogService';
 
 suite('Extension Test Suite', () => {
@@ -101,6 +103,113 @@ This is parsed content.`;
 			const noContentResult = noContentPost.validateForPublishing();
 			assert.strictEqual(noContentResult.isValid, false);
 			assert.ok(noContentResult.errors.includes('Post content is required'));
+		});
+
+		test('MediaAsset creation and validation', () => {
+			// Valid JPEG file
+			const validAsset = new MediaAsset({
+				filePath: '/uploads/image.jpg',
+				fileName: 'image.jpg',
+				mimeType: 'image/jpeg',
+				fileSize: 1024 * 1024 // 1MB
+			});
+			assert.strictEqual(validAsset.fileName, 'image.jpg');
+			assert.strictEqual(validAsset.mimeType, 'image/jpeg');
+			assert.strictEqual(validAsset.fileExtension, 'jpg');
+			assert.strictEqual(validAsset.isValidImageType(), true);
+			assert.strictEqual(validAsset.isWithinSizeLimit(), true);
+			assert.strictEqual(validAsset.getSizeInMB(), 1);
+
+			const validation = validAsset.validate();
+			assert.strictEqual(validation.isValid, true);
+			assert.strictEqual(validation.errors.length, 0);
+		});
+
+		test('MediaAsset invalid file type validation', () => {
+			const invalidAsset = new MediaAsset({
+				filePath: '/uploads/document.pdf',
+				fileName: 'document.pdf',
+				mimeType: 'application/pdf',
+				fileSize: 1024
+			});
+			assert.strictEqual(invalidAsset.isValidImageType(), false);
+			
+			const validation = invalidAsset.validate();
+			assert.strictEqual(validation.isValid, false);
+			assert.ok(validation.errors.some(error => error.includes('Unsupported file type')));
+		});
+
+		test('MediaAsset file size limit validation', () => {
+			const oversizedAsset = new MediaAsset({
+				filePath: '/uploads/huge.jpg',
+				fileName: 'huge.jpg',
+				mimeType: 'image/jpeg',
+				fileSize: 15 * 1024 * 1024 // 15MB
+			});
+			assert.strictEqual(oversizedAsset.isWithinSizeLimit(), false);
+			
+			const validation = oversizedAsset.validate();
+			assert.strictEqual(validation.isValid, false);
+			assert.ok(validation.errors.some(error => error.includes('exceeds maximum limit')));
+		});
+
+		test('MediaAsset fromFile static factory', () => {
+			const asset = MediaAsset.fromFile('/uploads/test.png', 'test.png', 2048);
+			assert.strictEqual(asset.fileName, 'test.png');
+			assert.strictEqual(asset.mimeType, 'image/png');
+			assert.strictEqual(asset.fileSize, 2048);
+		});
+
+		test('UploadResult success creation', () => {
+			const successResult = UploadResult.success('https://example.com/image.jpg');
+			assert.strictEqual(successResult.success, true);
+			assert.strictEqual(successResult.url, 'https://example.com/image.jpg');
+			assert.strictEqual(successResult.retryCount, 0);
+			assert.strictEqual(successResult.markdownFormat, '![image](https://example.com/image.jpg)');
+			assert.ok(successResult.getDisplayMessage().includes('Upload successful'));
+		});
+
+		test('UploadResult failure creation', () => {
+			const failureResult = UploadResult.failure('Network error');
+			assert.strictEqual(failureResult.success, false);
+			assert.strictEqual(failureResult.error, 'Network error');
+			assert.strictEqual(failureResult.url, undefined);
+			assert.strictEqual(failureResult.markdownFormat, undefined);
+			assert.ok(failureResult.getDisplayMessage().includes('Upload failed'));
+		});
+
+		test('UploadResult retry logic', () => {
+			const initialFailure = UploadResult.failure('First attempt failed');
+			assert.strictEqual(initialFailure.canRetry(), true);
+			
+			const retryResult = UploadResult.retry(initialFailure, 'Second attempt failed');
+			assert.strictEqual(retryResult.retryCount, 1);
+			assert.strictEqual(retryResult.canRetry(), true);
+			
+			// Test max retries
+			let currentResult = initialFailure;
+			for (let i = 0; i < 3; i++) {
+				currentResult = UploadResult.retry(currentResult);
+			}
+			assert.strictEqual(currentResult.retryCount, 3);
+			assert.strictEqual(currentResult.canRetry(), false);
+		});
+
+		test('UploadResult validation requirements', () => {
+			// Should throw if success=true but no URL
+			assert.throws(() => {
+				new UploadResult({ success: true });
+			}, /Successful upload must include a URL/);
+
+			// Should throw if success=false but no error
+			assert.throws(() => {
+				new UploadResult({ success: false });
+			}, /Failed upload must include an error message/);
+
+			// Should throw if negative retry count
+			assert.throws(() => {
+				new UploadResult({ success: false, error: 'test', retryCount: -1 });
+			}, /Retry count cannot be negative/);
 		});
 	});
 

@@ -4,9 +4,11 @@ import * as path from 'path';
 import { MicroblogService } from './services/MicroblogService';
 import { FileManager } from './services/FileManager';
 import { PublishingService } from './services/PublishingService';
+import { MediaService } from './services/MediaService';
 import { MicroblogTreeProvider, MicroblogTreeItem } from './providers/TreeProvider';
 import { ContentProvider } from './providers/ContentProvider';
 import { LocalPost } from './domain/LocalPost';
+import { MediaAsset } from './domain/MediaAsset';
 
 export function activate(context: vscode.ExtensionContext) {
 	console.log('[Micro.blog] Extension activated');
@@ -206,6 +208,109 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		});
 
+		// Upload Image command
+		const uploadImageCommand = vscode.commands.registerCommand('microblog.uploadImage', async (fileUri?: vscode.Uri) => {
+			try {
+				// Check if user is configured
+				const credentials = await microblogService.getCredentials();
+				if (!credentials) {
+					vscode.window.showErrorMessage('Please configure micro.blog first.');
+					return;
+				}
+
+				// Get API client
+				const apiClient = await microblogService.getApiClient();
+				if (!apiClient) {
+					vscode.window.showErrorMessage('API client not available. Please reconfigure micro.blog.');
+					return;
+				}
+
+				let selectedFileUri: vscode.Uri;
+
+				// If no file URI provided, show file dialog
+				if (!fileUri) {
+					const fileUris = await vscode.window.showOpenDialog({
+						canSelectFiles: true,
+						canSelectFolders: false,
+						canSelectMany: false,
+						filters: {
+							'Images': ['jpg', 'jpeg', 'png', 'gif']
+						},
+						openLabel: 'Select Image to Upload'
+					});
+
+					if (!fileUris || fileUris.length === 0) {
+						return;
+					}
+
+					selectedFileUri = fileUris[0];
+				} else {
+					selectedFileUri = fileUri;
+				}
+
+				// Get file stats
+				const fileStat = await vscode.workspace.fs.stat(selectedFileUri);
+				const fileName = path.basename(selectedFileUri.fsPath);
+
+				// Create MediaAsset for validation
+				const mediaAsset = MediaAsset.fromFile(selectedFileUri.fsPath, fileName, fileStat.size);
+
+				// Validate the file
+				const validation = mediaAsset.validate();
+				if (!validation.isValid) {
+					vscode.window.showErrorMessage(`Invalid file: ${validation.errors.join(', ')}`);
+					return;
+				}
+
+				// Create MediaService and upload with progress
+				const mediaService = new MediaService(apiClient);
+				
+				await vscode.window.withProgress({
+					location: vscode.ProgressLocation.Notification,
+					title: `Uploading ${fileName}...`,
+					cancellable: false
+				}, async (progress) => {
+					progress.report({ message: 'Validating file...' });
+					
+					// Get current blog configuration for micropub endpoint
+					const config = await microblogService.getBlogConfiguration();
+					if (!config || !config.domain) {
+						throw new Error('Blog not configured properly');
+					}
+					
+					const micropubEndpoint = `https://micro.blog/micropub`;
+					
+					progress.report({ message: 'Uploading to micro.blog...' });
+					
+					const result = await mediaService.uploadImage(mediaAsset, micropubEndpoint);
+					
+					if (result.success && result.url) {
+						// Show success with copy options
+						const action = await vscode.window.showInformationMessage(
+							`✅ Image uploaded successfully!`,
+							'Copy URL',
+							'Copy Markdown'
+						);
+						
+						if (action === 'Copy URL') {
+							await vscode.env.clipboard.writeText(result.url);
+							vscode.window.showInformationMessage('URL copied to clipboard!');
+						} else if (action === 'Copy Markdown') {
+							const markdown = mediaService.formatAsMarkdown(result.url, fileName.split('.')[0]);
+							await vscode.env.clipboard.writeText(markdown);
+							vscode.window.showInformationMessage('Markdown copied to clipboard!');
+						}
+					} else {
+						vscode.window.showErrorMessage(`❌ Upload failed: ${result.error}`);
+					}
+				});
+
+			} catch (error) {
+				console.error('[Micro.blog] Upload image failed:', error);
+				vscode.window.showErrorMessage(`Failed to upload image: ${error}`);
+			}
+		});
+
 		// Publish Post command
 		const publishPostCommand = vscode.commands.registerCommand('microblog.publishPost', async (treeItem: MicroblogTreeItem) => {
 			try {
@@ -273,6 +378,7 @@ export function activate(context: vscode.ExtensionContext) {
 			openLocalPostCommand,
 			refreshCommand,
 			newPostCommand,
+			uploadImageCommand,
 			publishPostCommand,
 			treeView,
 			contentProviderDisposable

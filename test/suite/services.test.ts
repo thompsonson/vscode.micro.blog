@@ -1,10 +1,12 @@
 import * as assert from 'assert';
 import * as https from 'https';
-import { ApiClient, VerifyTokenResponse, PublishResponse } from '../../src/services/ApiClient';
+import { ApiClient, VerifyTokenResponse, PublishResponse, MicropubConfig, UploadResponse } from '../../src/services/ApiClient';
 import { MicroblogService } from '../../src/services/MicroblogService';
 import { PublishingService, MicropubPost } from '../../src/services/PublishingService';
+import { MediaService, MockFileReader } from '../../src/services/MediaService';
 import { Credentials } from '../../src/domain/Credentials';
 import { LocalPost } from '../../src/domain/LocalPost';
+import { MediaAsset } from '../../src/domain/MediaAsset';
 
 suite('Service Tests', () => {
 	
@@ -303,6 +305,118 @@ suite('Service Tests', () => {
 			const expectedBody = 'h=entry&name=Format+Test&content=Format+test+content';
 			assert.strictEqual(capturedRequest.body, expectedBody);
 		});
+
+		test('Should get config successfully', async () => {
+			const mockConfig: MicropubConfig = {
+				'media-endpoint': 'https://micro.blog/micropub/media',
+				'syndicate-to': [
+					{ uid: 'micro.blog', name: 'Micro.blog' }
+				]
+			};
+			mockHttpRequest(mockConfig);
+			
+			const credentials = new Credentials('test-token');
+			const apiClient = new ApiClient(credentials);
+			
+			const config = await apiClient.getConfig('https://micro.blog/micropub');
+			
+			assert.strictEqual(config['media-endpoint'], 'https://micro.blog/micropub/media');
+			assert.ok(config['syndicate-to']);
+			assert.strictEqual(config['syndicate-to']?.[0].uid, 'micro.blog');
+		});
+
+		test('Should handle config request error', async () => {
+			mockHttpRequest({}, 400, false);
+			
+			const credentials = new Credentials('test-token');
+			const apiClient = new ApiClient(credentials);
+			
+			try {
+				await apiClient.getConfig('https://micro.blog/micropub');
+				assert.fail('Should have thrown an error');
+			} catch (error) {
+				assert.ok(error instanceof Error);
+				assert.ok((error as Error).message.includes('Config request failed with status 400'));
+			}
+		});
+
+		test('Should upload media successfully with Location header', async () => {
+			const mockHeaders = { location: 'https://example.micro.blog/uploads/test.jpg' };
+			mockHttpRequest({}, 201, false, mockHeaders);
+			
+			const credentials = new Credentials('test-token');
+			const apiClient = new ApiClient(credentials);
+			const fileData = Buffer.from('fake image data');
+			
+			const result = await apiClient.uploadMedia(
+				'https://micro.blog/micropub/media',
+				fileData,
+				'test.jpg',
+				'image/jpeg'
+			);
+			
+			assert.strictEqual(result.url, 'https://example.micro.blog/uploads/test.jpg');
+		});
+
+		test('Should upload media successfully with JSON response', async () => {
+			const mockResponse = { url: 'https://example.micro.blog/uploads/test.png' };
+			mockHttpRequest(mockResponse, 201, false, {}); // No Location header
+			
+			const credentials = new Credentials('test-token');
+			const apiClient = new ApiClient(credentials);
+			const fileData = Buffer.from('fake image data');
+			
+			const result = await apiClient.uploadMedia(
+				'https://micro.blog/micropub/media',
+				fileData,
+				'test.png',
+				'image/png'
+			);
+			
+			assert.strictEqual(result.url, 'https://example.micro.blog/uploads/test.png');
+		});
+
+		test('Should handle media upload error', async () => {
+			mockHttpRequest({}, 400, false);
+			
+			const credentials = new Credentials('test-token');
+			const apiClient = new ApiClient(credentials);
+			const fileData = Buffer.from('fake image data');
+			
+			try {
+				await apiClient.uploadMedia(
+					'https://micro.blog/micropub/media',
+					fileData,
+					'test.jpg',
+					'image/jpeg'
+				);
+				assert.fail('Should have thrown an error');
+			} catch (error) {
+				assert.ok(error instanceof Error);
+				assert.ok((error as Error).message.includes('Media upload failed with status 400'));
+			}
+		});
+
+		test('Should handle media upload network error', async () => {
+			mockHttpRequest({}, 200, true); // shouldError = true
+			
+			const credentials = new Credentials('test-token');
+			const apiClient = new ApiClient(credentials);
+			const fileData = Buffer.from('fake image data');
+			
+			try {
+				await apiClient.uploadMedia(
+					'https://micro.blog/micropub/media',
+					fileData,
+					'test.jpg',
+					'image/jpeg'
+				);
+				assert.fail('Should have thrown an error');
+			} catch (error) {
+				assert.ok(error instanceof Error);
+				assert.ok((error as Error).message.includes('Network error'));
+			}
+		});
 	});
 
 	suite('MicroblogService Tests', () => {
@@ -531,6 +645,205 @@ suite('Service Tests', () => {
 			assert.strictEqual(result.success, true);
 			assert.ok(capturedPostData);
 			assert.strictEqual(capturedPostData.content, specialContent);
+		});
+	});
+
+	suite('MediaService Tests', () => {
+		let mockApiClient: any;
+		let mediaService: MediaService;
+		let originalRequest: typeof https.request;
+
+		setup(() => {
+			// Mock API client
+			mockApiClient = {
+				getConfig: async () => ({
+					'media-endpoint': 'https://micro.blog/micropub/media'
+				}),
+				uploadMedia: async () => ({
+					url: 'https://example.micro.blog/uploads/test.jpg'
+				})
+			};
+			
+			mediaService = new MediaService(mockApiClient, new MockFileReader());
+			originalRequest = https.request;
+		});
+
+		teardown(() => {
+			(https as any).request = originalRequest;
+		});
+
+		test('Should validate image file successfully', () => {
+			const validation = mediaService.validateImageFile(
+				'/uploads/test.jpg',
+				'test.jpg',
+				1024 * 1024 // 1MB
+			);
+			
+			assert.strictEqual(validation.isValid, true);
+			assert.strictEqual(validation.errors.length, 0);
+		});
+
+		test('Should fail validation for oversized file', () => {
+			const validation = mediaService.validateImageFile(
+				'/uploads/huge.jpg',
+				'huge.jpg',
+				15 * 1024 * 1024 // 15MB
+			);
+			
+			assert.strictEqual(validation.isValid, false);
+			assert.ok(validation.errors.some(error => error.includes('exceeds maximum limit')));
+		});
+
+		test('Should fail validation for invalid file type', () => {
+			const validation = mediaService.validateImageFile(
+				'/uploads/doc.pdf',
+				'doc.pdf',
+				1024
+			);
+			
+			assert.strictEqual(validation.isValid, false);
+			assert.ok(validation.errors.some(error => error.includes('Unsupported file type')));
+		});
+
+		test('Should discover media endpoint successfully', async () => {
+			const endpoint = await mediaService.discoverMediaEndpoint('https://micro.blog/micropub');
+			
+			assert.strictEqual(endpoint, 'https://micro.blog/micropub/media');
+		});
+
+		test('Should cache media endpoint', async () => {
+			let configCallCount = 0;
+			mockApiClient.getConfig = async () => {
+				configCallCount++;
+				return { 'media-endpoint': 'https://micro.blog/micropub/media' };
+			};
+			
+			// First call
+			await mediaService.discoverMediaEndpoint('https://micro.blog/micropub');
+			
+			// Second call should use cache
+			await mediaService.discoverMediaEndpoint('https://micro.blog/micropub');
+			
+			assert.strictEqual(configCallCount, 1);
+		});
+
+		test('Should handle media endpoint discovery failure', async () => {
+			mockApiClient.getConfig = async () => {
+				throw new Error('Config request failed');
+			};
+			
+			try {
+				await mediaService.discoverMediaEndpoint('https://micro.blog/micropub');
+				assert.fail('Should have thrown an error');
+			} catch (error) {
+				assert.ok(error instanceof Error);
+				assert.ok((error as Error).message.includes('Failed to discover media endpoint'));
+			}
+		});
+
+		test('Should upload image successfully', async () => {
+			const asset = new MediaAsset({
+				filePath: '/uploads/test.jpg',
+				fileName: 'test.jpg',
+				mimeType: 'image/jpeg',
+				fileSize: 1024 * 1024
+			});
+			
+			const result = await mediaService.uploadImage(asset, 'https://micro.blog/micropub');
+			
+			assert.strictEqual(result.success, true);
+			assert.strictEqual(result.url, 'https://example.micro.blog/uploads/test.jpg');
+			assert.strictEqual(result.retryCount, 0);
+		});
+
+		test('Should fail upload for invalid asset', async () => {
+			const invalidAsset = new MediaAsset({
+				filePath: '/uploads/huge.jpg',
+				fileName: 'huge.jpg',
+				mimeType: 'image/jpeg',
+				fileSize: 15 * 1024 * 1024 // Too large
+			});
+			
+			const result = await mediaService.uploadImage(invalidAsset, 'https://micro.blog/micropub');
+			
+			assert.strictEqual(result.success, false);
+			assert.ok(result.error?.includes('Validation failed'));
+		});
+
+		test('Should retry upload on failure', async () => {
+			let uploadAttempts = 0;
+			mockApiClient.uploadMedia = async () => {
+				uploadAttempts++;
+				if (uploadAttempts < 3) {
+					throw new Error('Upload failed');
+				}
+				return { url: 'https://example.micro.blog/uploads/test.jpg' };
+			};
+			
+			const asset = new MediaAsset({
+				filePath: '/uploads/test.jpg',
+				fileName: 'test.jpg',
+				mimeType: 'image/jpeg',
+				fileSize: 1024
+			});
+			
+			const result = await mediaService.uploadImage(asset, 'https://micro.blog/micropub', 3, 10); // 10ms delay for testing
+			
+			assert.strictEqual(result.success, true);
+			assert.strictEqual(result.retryCount, 2); // Failed twice, succeeded on third attempt
+			assert.strictEqual(uploadAttempts, 3);
+		});
+
+		test('Should fail after max retries', async () => {
+			mockApiClient.uploadMedia = async () => {
+				throw new Error('Persistent upload failure');
+			};
+			
+			const asset = new MediaAsset({
+				filePath: '/uploads/test.jpg',
+				fileName: 'test.jpg',
+				mimeType: 'image/jpeg',
+				fileSize: 1024
+			});
+			
+			const result = await mediaService.uploadImage(asset, 'https://micro.blog/micropub', 2, 10); // Max 2 retries, 10ms delay
+			
+			assert.strictEqual(result.success, false);
+			assert.strictEqual(result.retryCount, 2); // 2 retries after initial attempt
+			assert.ok(result.error?.includes('Persistent upload failure'));
+		});
+
+		test('Should format URL as markdown', () => {
+			const markdown = mediaService.formatAsMarkdown('https://example.com/uploads/test.jpg', 'Test Image');
+			assert.strictEqual(markdown, '![Test Image](https://example.com/uploads/test.jpg)');
+		});
+
+		test('Should format URL as HTML', () => {
+			const html = mediaService.formatAsHtml('https://example.com/uploads/test.jpg', 'Test Image');
+			assert.strictEqual(html, '<img src="https://example.com/uploads/test.jpg" alt="Test Image">');
+		});
+
+		test('Should extract filename from URL for alt text', () => {
+			const markdown = mediaService.formatAsMarkdown('https://example.com/uploads/my-photo.jpg');
+			assert.strictEqual(markdown, '![my-photo](https://example.com/uploads/my-photo.jpg)');
+		});
+
+		test('Should clear cache', async () => {
+			// First, populate the cache
+			await mediaService.discoverMediaEndpoint('https://micro.blog/micropub');
+			
+			// Clear cache
+			mediaService.clearCache();
+			
+			// This should call getConfig again
+			let configCallCount = 0;
+			mockApiClient.getConfig = async () => {
+				configCallCount++;
+				return { 'media-endpoint': 'https://micro.blog/micropub/media' };
+			};
+			
+			await mediaService.discoverMediaEndpoint('https://micro.blog/micropub');
+			assert.strictEqual(configCallCount, 1);
 		});
 	});
 });

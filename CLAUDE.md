@@ -25,10 +25,14 @@ src/
 │   ├── Blog.ts              # Blog entity with domain validation
 │   ├── Post.ts              # Post entity with content parsing
 │   ├── LocalPost.ts         # Local post entity with frontmatter ✅
+│   ├── MediaAsset.ts        # Image file validation and metadata ✅
+│   ├── UploadResult.ts      # Upload response with retry logic ✅
 │   └── Credentials.ts       # Authentication value object
 ├── services/                # Application services
 │   ├── MicroblogService.ts  # Main orchestration (configure, fetch)
-│   ├── ApiClient.ts         # Micropub HTTP client
+│   ├── ApiClient.ts         # Micropub HTTP client with media upload ✅
+│   ├── MediaService.ts      # Image upload orchestration ✅
+│   ├── PublishingService.ts # Local post publishing ✅
 │   └── FileManager.ts       # Workspace and file operations ✅
 ├── providers/               # VS Code integration ✅
 │   ├── TreeProvider.ts      # Content tree view (local + remote) ✅
@@ -93,7 +97,9 @@ Cmd+Shift+P         # Command palette to test extension commands
 ### Endpoints Used
 - **Authentication**: `https://micro.blog/micropub?q=source`
 - **Post Fetching**: Same endpoint (auto-discovers user content)
-- **Future**: `https://micro.blog/micropub` for posting
+- **Publishing**: `https://micro.blog/micropub` for posting ✅
+- **Media Upload**: `https://micro.blog/micropub/media` for image uploads ✅
+- **Config Discovery**: `https://micro.blog/micropub?q=config` for media endpoint ✅
 
 ### Authentication Flow
 1. User provides app token (from Account → Edit Apps → New Token)
@@ -103,12 +109,14 @@ Cmd+Shift+P         # Command palette to test extension commands
 
 ## Testing Strategy
 
-### Current Tests ✅ (22 passing)
-- **Domain entities**: Blog, Post, Credentials, and LocalPost validation
+### Current Tests ✅ (68 passing)
+- **Domain entities**: Blog, Post, Credentials, LocalPost, MediaAsset, and UploadResult validation
 - **VS Code integration**: Extension activation and command registration
 - **LocalPost functionality**: Creation, serialization, parsing, and slug generation
 - **Tree Provider**: Content organization and sync status handling
 - **Content Provider**: Post formatting and display
+- **Media Upload**: File validation, API integration, retry logic, and VS Code integration
+- **API Client**: Media endpoint discovery, multipart upload, and error handling
 
 ### Future Test Areas 📝
 - **SyncManager**: Sync status tracking and conflict detection
@@ -216,8 +224,21 @@ The extension now includes full publishing capabilities, allowing users to publi
 - **Comprehensive Test Coverage**: 40 passing tests (15 new publishing tests added)
 - **Microsoft VS Code Patterns**: Follows official tree view context menu patterns
 
+### ✅ **IMAGE UPLOAD FEATURE COMPLETED**
+The extension now includes comprehensive image upload functionality.
+
+### **Image Upload Features**
+- **Media Upload Command**: `microblog.uploadImage` command with file dialog integration
+- **File Validation**: JPEG/PNG/GIF support up to 10MB with clear error messages
+- **Context Menu**: Right-click upload for image files in Explorer
+- **Progress Feedback**: VS Code progress indicators during upload
+- **Retry Logic**: Automatic retry (max 3 attempts) with exponential backoff
+- **URL Handling**: Copy URL or markdown format to clipboard
+- **API Integration**: Full Micropub media endpoint protocol compliance
+- **Comprehensive Testing**: 26 new tests covering all upload scenarios
+
 ### 🚀 **READY FOR PHASE 3**
-Next: Advanced features like draft synchronization, multi-blog support, and media handling.
+Next: Advanced features like draft synchronization, multi-blog support, and enhanced media management.
 
 ---
 
@@ -227,7 +248,7 @@ Next: Advanced features like draft synchronization, multi-blog support, and medi
 
 #### **Before ANY code changes:**
 1. Run `npm run compile` - ensure TypeScript compiles cleanly
-2. Run `npm test` - ensure all tests pass (currently 40 tests)
+2. Run `npm test` - ensure all tests pass (currently 68 tests)
 3. Run `npm run lint` - ensure code style compliance
 4. **ALL must pass before making any changes**
 

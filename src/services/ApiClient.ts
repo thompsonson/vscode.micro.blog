@@ -23,6 +23,19 @@ export interface PublishResponse {
 	error?: string;
 }
 
+export interface MicropubConfig {
+	'media-endpoint'?: string;
+	'syndicate-to'?: Array<{
+		uid: string;
+		name: string;
+	}>;
+}
+
+export interface UploadResponse {
+	url?: string;
+	error?: string;
+}
+
 export class ApiClient {
 	constructor(private credentials: Credentials) {}
 
@@ -149,6 +162,150 @@ export class ApiClient {
 			});
 
 			req.write(postData);
+			req.end();
+		});
+	}
+
+	async getConfig(endpoint: string): Promise<MicropubConfig> {
+		const url = new URL(endpoint);
+		url.searchParams.set('q', 'config');
+		
+		console.log(`[Micro.blog] Getting config from: ${url.hostname}${url.pathname}`);
+		
+		return new Promise((resolve, reject) => {
+			const options = {
+				hostname: url.hostname,
+				port: url.port || 443,
+				path: url.pathname + url.search,
+				method: 'GET',
+				headers: {
+					'Authorization': this.credentials.getAuthorizationHeader(),
+					'Accept': 'application/json'
+				}
+			};
+
+			const req = https.request(options, (res) => {
+				let data = '';
+				
+				res.on('data', (chunk) => {
+					data += chunk;
+				});
+				
+				res.on('end', () => {
+					try {
+						if (res.statusCode === 200) {
+							const config = JSON.parse(data) as MicropubConfig;
+							console.log(`[Micro.blog] Config retrieved successfully`);
+							resolve(config);
+						} else {
+							console.error(`[Micro.blog] Config request failed with status ${res.statusCode}`);
+							reject(new Error(`Config request failed with status ${res.statusCode}`));
+						}
+					} catch (error) {
+						console.error(`[Micro.blog] Failed to parse config response:`, error);
+						reject(new Error(`Failed to parse config response: ${error}`));
+					}
+				});
+			});
+
+			req.on('error', (error) => {
+				console.error(`[Micro.blog] Network error during config request:`, error);
+				reject(new Error(`Network error: ${error.message}`));
+			});
+
+			req.setTimeout(TIMEOUTS.API_REQUEST, () => {
+				req.destroy();
+				reject(new Error('Config request timeout'));
+			});
+
+			req.end();
+		});
+	}
+
+	async uploadMedia(mediaEndpoint: string, fileData: Buffer, fileName: string, mimeType: string): Promise<UploadResponse> {
+		const url = new URL(mediaEndpoint);
+		
+		console.log(`[Micro.blog] Uploading media: ${fileName} to ${url.hostname}${url.pathname}`);
+		
+		return new Promise((resolve, reject) => {
+			// Create multipart form data boundary
+			const boundary = `----formdata-boundary-${Date.now()}`;
+			
+			// Build multipart body
+			const formData = [
+				`--${boundary}`,
+				`Content-Disposition: form-data; name="file"; filename="${fileName}"`,
+				`Content-Type: ${mimeType}`,
+				'',
+				fileData.toString('binary'),
+				`--${boundary}--`
+			].join('\r\n');
+			
+			const postBody = Buffer.from(formData, 'binary');
+			
+			const options = {
+				hostname: url.hostname,
+				port: url.port || 443,
+				path: url.pathname,
+				method: 'POST',
+				headers: {
+					'Authorization': this.credentials.getAuthorizationHeader(),
+					'Content-Type': `multipart/form-data; boundary=${boundary}`,
+					'Content-Length': postBody.length
+				}
+			};
+
+			const req = https.request(options, (res) => {
+				let data = '';
+				
+				res.on('data', (chunk) => {
+					data += chunk;
+				});
+				
+				res.on('end', () => {
+					try {
+						if (res.statusCode === 201 || res.statusCode === 202) {
+							// Successful upload - URL should be in Location header
+							const location = res.headers.location as string;
+							if (location) {
+								console.log(`[Micro.blog] Media uploaded successfully: ${location}`);
+								resolve({ url: location });
+							} else {
+								// Try to parse JSON response for URL
+								try {
+									const response = JSON.parse(data);
+									if (response.url) {
+										console.log(`[Micro.blog] Media uploaded successfully: ${response.url}`);
+										resolve({ url: response.url });
+									} else {
+										reject(new Error('Upload successful but no URL returned'));
+									}
+								} catch {
+									reject(new Error('Upload successful but no URL in Location header or response body'));
+								}
+							}
+						} else {
+							console.error(`[Micro.blog] Media upload failed with status ${res.statusCode}`);
+							reject(new Error(`Media upload failed with status ${res.statusCode}`));
+						}
+					} catch (error) {
+						console.error(`[Micro.blog] Failed to process upload response:`, error);
+						reject(new Error(`Failed to process upload response: ${error}`));
+					}
+				});
+			});
+
+			req.on('error', (error) => {
+				console.error(`[Micro.blog] Network error during media upload:`, error);
+				reject(new Error(`Network error: ${error.message}`));
+			});
+
+			req.setTimeout(TIMEOUTS.API_REQUEST * 3, () => { // Longer timeout for file uploads
+				req.destroy();
+				reject(new Error('Media upload timeout'));
+			});
+
+			req.write(postBody);
 			req.end();
 		});
 	}
