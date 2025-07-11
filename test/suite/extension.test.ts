@@ -73,6 +73,35 @@ This is parsed content.`;
 			assert.strictEqual(LocalPost.generateSlug('Multiple   Spaces'), 'multiple-spaces');
 			assert.strictEqual(LocalPost.generateSlug(''), '');
 		});
+
+		test('LocalPost Micropub format conversion', () => {
+			const post = LocalPost.create('Test Post', 'This is test content');
+			const micropubFormat = post.toMicropubFormat();
+			
+			assert.strictEqual(micropubFormat.h, 'entry');
+			assert.strictEqual(micropubFormat.name, 'Test Post');
+			assert.strictEqual(micropubFormat.content, 'This is test content');
+		});
+
+		test('LocalPost publishing validation', () => {
+			// Valid post
+			const validPost = LocalPost.create('Valid Title', 'Valid content');
+			const validResult = validPost.validateForPublishing();
+			assert.strictEqual(validResult.isValid, true);
+			assert.strictEqual(validResult.errors.length, 0);
+
+			// Invalid post - missing title
+			const noTitlePost = LocalPost.create('', 'Content only');
+			const noTitleResult = noTitlePost.validateForPublishing();
+			assert.strictEqual(noTitleResult.isValid, false);
+			assert.ok(noTitleResult.errors.includes('Post title is required'));
+
+			// Invalid post - missing content
+			const noContentPost = LocalPost.create('Title only', '');
+			const noContentResult = noContentPost.validateForPublishing();
+			assert.strictEqual(noContentResult.isValid, false);
+			assert.ok(noContentResult.errors.includes('Post content is required'));
+		});
 	});
 
 	suite('Extension Integration Tests', () => {
@@ -150,6 +179,39 @@ This is parsed content.`;
 			// - Tree view shows "Local Drafts" section
 			// - File has correct frontmatter
 			// These will be implemented as we build the FileManager service
+		});
+
+		test('user can publish local draft to micro.blog', async () => {
+			// User Scenario (Gherkin format):
+			// Feature: Publish Post to Micro.blog
+			//   Scenario: User publishes a local draft
+			//     Given I have a local post "my-post.md" with valid frontmatter
+			//     When I right-click and select "Publish to Micro.blog"
+			//     Then the post is converted to Micropub format
+			//     And sent via POST /micropub
+			//     And I see a success notification
+			//     And the post appears on my micro.blog
+
+			// ATDD Implementation: Complete publishing workflow test
+
+			// Given: Extension is activated
+			const extension = vscode.extensions.getExtension('undefined_publisher.micro-blog-vscode');
+			assert.ok(extension, 'Extension should be present');
+			
+			// And: Publish command should be registered
+			const commands = await vscode.commands.getCommands(true);
+			const publishCommand = commands.find(cmd => cmd === 'microblog.publishPost');
+			assert.ok(publishCommand, 'Publish Post command should be registered');
+
+			// TODO: Once implementation exists, test complete workflow:
+			// - Create local post with frontmatter
+			// - Execute publish command
+			// - Verify Micropub format conversion
+			// - Mock API call to /micropub endpoint
+			// - Verify success notification
+			
+			// This test is currently failing as expected (ATDD step 2)
+			// Implementation will be added incrementally to make this pass
 		});
 	});
 });

@@ -3,8 +3,10 @@ import * as path from 'path';
 
 import { MicroblogService } from './services/MicroblogService';
 import { FileManager } from './services/FileManager';
-import { MicroblogTreeProvider } from './providers/TreeProvider';
+import { PublishingService } from './services/PublishingService';
+import { MicroblogTreeProvider, MicroblogTreeItem } from './providers/TreeProvider';
 import { ContentProvider } from './providers/ContentProvider';
+import { LocalPost } from './domain/LocalPost';
 
 export function activate(context: vscode.ExtensionContext) {
 	console.log('[Micro.blog] Extension activated');
@@ -203,6 +205,65 @@ export function activate(context: vscode.ExtensionContext) {
 				vscode.window.showErrorMessage(`Failed to create new post: ${error}`);
 			}
 		});
+
+		// Publish Post command
+		const publishPostCommand = vscode.commands.registerCommand('microblog.publishPost', async (treeItem: MicroblogTreeItem) => {
+			try {
+				if (!treeItem || !treeItem.localPost) {
+					vscode.window.showErrorMessage('No post selected for publishing.');
+					return;
+				}
+
+				// Extract LocalPost data from TreeItem and create proper instance
+				const localPostData = treeItem.localPost;
+				const localPost = new LocalPost({
+					title: localPostData.title,
+					content: localPostData.content,
+					status: localPostData.status,
+					type: localPostData.type,
+					postId: localPostData.postId,
+					lastSync: localPostData.lastSync ? new Date(localPostData.lastSync) : undefined,
+					filePath: localPostData.filePath
+				});
+
+				// Get current credentials from the service
+				const credentials = await microblogService.getCredentials();
+				if (!credentials) {
+					vscode.window.showErrorMessage('Please configure micro.blog first.');
+					return;
+				}
+
+				// Create API client and publishing service
+				const apiClient = await microblogService.getApiClient();
+				if (!apiClient) {
+					vscode.window.showErrorMessage('API client not available. Please reconfigure micro.blog.');
+					return;
+				}
+
+				const publishingService = new PublishingService(apiClient);
+
+				await vscode.window.withProgress({
+					location: vscode.ProgressLocation.Notification,
+					title: `Publishing "${localPost.title}"...`,
+					cancellable: false
+				}, async () => {
+					const result = await publishingService.publishPost(localPost);
+					
+					if (result.success) {
+						const message = result.url 
+							? `✅ Post published successfully: ${result.url}`
+							: `✅ Post published successfully!`;
+						vscode.window.showInformationMessage(message);
+					} else {
+						vscode.window.showErrorMessage(`❌ Publishing failed: ${result.error}`);
+					}
+				});
+
+			} catch (error) {
+				console.error('[Micro.blog] Publish post failed:', error);
+				vscode.window.showErrorMessage(`Failed to publish post: ${error}`);
+			}
+		});
 		
 		// Register commands and providers
 		context.subscriptions.push(
@@ -212,6 +273,7 @@ export function activate(context: vscode.ExtensionContext) {
 			openLocalPostCommand,
 			refreshCommand,
 			newPostCommand,
+			publishPostCommand,
 			treeView,
 			contentProviderDisposable
 		);

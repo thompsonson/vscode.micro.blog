@@ -1,12 +1,14 @@
 # Micro.blog VS Code Extension
 
-> ✅ **MVP Complete** - Ready for user testing!
+> ✅ **Phase 1 Complete** | ✅ **Phase 2 Complete** - Full local creation & publishing ready!
 
-A VS Code extension for browsing and viewing your micro.blog content directly in VS Code, built with Domain Driven Design principles.
+A VS Code extension for micro.blog integration that lets you browse remote content and create/edit posts locally in VS Code, built with Domain Driven Design principles.
 
 ## 🚀 Features
 
-### ✅ **Completed (v0.1.0)**
+### ✅ **Completed**
+
+#### **Phase 1 (v0.1.0) - Read-Only Browsing**
 - **🔧 Simple Configuration**: One-click setup with app token only
 - **🔐 Secure Authentication**: Uses VS Code SecretStorage + proper token verification
 - **📱 Connection Testing**: Verify credentials and view account info
@@ -16,12 +18,28 @@ A VS Code extension for browsing and viewing your micro.blog content directly in
 - **🛡️ Error Handling**: Clear error messages for common issues
 - **🧪 Comprehensive Testing**: 18 passing tests with API mocking
 
+#### **Phase 2 Week 1 (v0.1.20250711) - Local Content Creation**
+- **📝 New Post Creation**: Create local blog posts with "New Post" command
+- **📂 Workspace Integration**: Automatic `.microblog/` and `content/` folder setup
+- **📋 Enhanced Tree View**: Shows "📝 Local Drafts" alongside remote content
+- **🔍 File Watching**: Real-time tree updates when local files change
+- **✍️ Markdown Support**: Full frontmatter support with title, status, type metadata
+- **🎯 Click-to-Edit**: Click local posts to open in VS Code editor
+
+#### **Phase 2 Week 2 (v0.2.20250711) - Publishing**
+- **📤 One-Click Publishing**: Right-click local posts → "Publish to Micro.blog"
+- **✅ Content Validation**: Pre-publish validation with clear error messages
+- **🔄 Progress Feedback**: VS Code progress notifications during publishing
+- **🌐 Micropub Protocol**: Full support for micro.blog's publishing API
+- **🎯 Context Menu Integration**: Native VS Code right-click workflow
+- **🛡️ Error Handling**: Comprehensive error recovery and user feedback
+
 ## 📦 Installation & Setup
 
 ### For Users
-1. **Install from VSIX**: Download `micro-blog-vscode-0.1.0.vsix` and install via:
+1. **Install from VSIX**: Download `micro-blog-vscode-0.2.20250711.vsix` and install via:
    - Command Palette → "Extensions: Install from VSIX"
-   - Or: `code --install-extension micro-blog-vscode-0.1.0.vsix`
+   - Or: `code --install-extension micro-blog-vscode-0.2.20250711.vsix`
 
 ### For Developers  
 1. Clone this repository
@@ -40,10 +58,22 @@ A VS Code extension for browsing and viewing your micro.blog content directly in
 
 ## 🎯 Usage
 
-- **Browse Posts**: Expand "Published" and "Drafts" in the tree view
-- **View Content**: Click any post to open formatted content in editor  
+### **Browsing Remote Content**
+- **Browse Posts**: Expand "📄 Published Posts" and "📋 Remote Drafts" in the tree view
+- **View Content**: Click any remote post to open formatted content in editor  
 - **Test Connection**: Command Palette → "Micro.blog: Test Micro.blog Extension"
 - **Refresh**: Click refresh icon (↻) or run "Micro.blog: Refresh Content"
+
+### **Creating Local Content**
+- **New Post**: Click the ➕ button in tree view toolbar (requires workspace folder)
+- **Edit Locally**: Click any post in "📝 Local Drafts" to edit in VS Code
+- **Auto-Save**: Changes are automatically saved to your workspace
+
+### **Publishing to Micro.blog** ✨ **New!**
+- **Publish**: Right-click any local post → select "Publish to Micro.blog"
+- **Progress**: Watch publishing progress in VS Code notifications
+- **Success**: Get confirmation with optional URL to published post
+- **Error Handling**: Clear error messages for validation failures or API issues
 
 ## Architecture
 
@@ -56,11 +86,14 @@ src/
 │   └── constants.ts          # API endpoints, storage keys, timeouts
 ├── domain/                   # Core business logic
 │   ├── Blog.ts              # Blog entity
-│   ├── Post.ts              # Post entity  
+│   ├── Post.ts              # Post entity
+│   ├── LocalPost.ts         # Local post entity with publishing support  
 │   └── Credentials.ts       # Authentication value object
 ├── services/                # Application services
 │   ├── MicroblogService.ts  # Main orchestration
-│   └── ApiClient.ts         # Micropub HTTP client
+│   ├── ApiClient.ts         # Micropub HTTP client with publishing
+│   ├── PublishingService.ts # Publishing workflow orchestration
+│   └── FileManager.ts       # Local content management
 └── providers/               # VS Code integration ✅
     ├── TreeProvider.ts      # Content tree view ✅
     └── ContentProvider.ts   # Read-only content viewer ✅
@@ -68,8 +101,8 @@ src/
 
 ## 🧪 Testing
 
-- **Run tests**: `npm test` (18 tests passing)
-- **Coverage**: Domain logic, API client with mocks, VS Code integration
+- **Run tests**: `npm test` (40 tests passing)
+- **Coverage**: Domain logic, publishing workflow, API client with mocks, VS Code integration
 - **Manual testing**: Working with real micro.blog accounts
 
 ## 🛠️ Development
@@ -87,20 +120,21 @@ src/
 - **Solution**: Always use main `micro.blog/micropub` endpoint for API calls
 - **Status**: Resolved in v0.1.0
 
-## 🗺️ Roadmap (Future Phases)
+## 🗺️ Roadmap
 
-### Phase 2: Content Editing
-- Edit posts locally in VS Code
-- Save changes as drafts
+### ✅ **Phase 1: Read-Only Browsing** (Complete)
+- Browse and view existing micro.blog content
 
-### Phase 3: Publishing  
-- Publish new posts via Micropub
-- Update existing posts
+### 🚧 **Phase 2: Local Content Creation & Editing**
+- ✅ **Week 1**: Local post creation (Complete)
+- 🔄 **Week 2**: Edit remote drafts locally (In Progress)  
+- 📋 **Week 3**: Publishing capability (Planned)
 
-### Phase 4: Advanced Features
+### 📋 **Phase 3: Advanced Features** (Future)
 - Multi-blog support
-- Photo uploads
+- Photo uploads  
 - Categories and tags management
+- Full bi-directional sync
 
 ## API References
 

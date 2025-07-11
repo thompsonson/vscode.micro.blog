@@ -1,8 +1,10 @@
 import * as assert from 'assert';
 import * as https from 'https';
-import { ApiClient, VerifyTokenResponse } from '../../src/services/ApiClient';
+import { ApiClient, VerifyTokenResponse, PublishResponse } from '../../src/services/ApiClient';
 import { MicroblogService } from '../../src/services/MicroblogService';
+import { PublishingService, MicropubPost } from '../../src/services/PublishingService';
 import { Credentials } from '../../src/domain/Credentials';
+import { LocalPost } from '../../src/domain/LocalPost';
 
 suite('Service Tests', () => {
 	
@@ -50,10 +52,11 @@ suite('Service Tests', () => {
 			(https as any).request = originalRequest;
 		});
 
-		function mockHttpRequest(responseData: any, statusCode: number = 200, shouldError: boolean = false) {
+		function mockHttpRequest(responseData: any, statusCode: number = 200, shouldError: boolean = false, headers: any = {}) {
 			(https as any).request = function(options: any, callback?: any) {
 				const mockResponse = {
 					statusCode,
+					headers,
 					on: function(event: string, handler: Function) {
 						if (event === 'data') {
 							setTimeout(() => handler(JSON.stringify(responseData)), 0);
@@ -72,7 +75,10 @@ suite('Service Tests', () => {
 					setTimeout: function(timeout: number, handler: Function) {
 						// Don't actually timeout in tests
 					},
-					write: function(data: string) {},
+					write: function(data: string) {
+						// Store the written data for verification if needed
+						(mockRequest as any).writtenData = data;
+					},
 					end: function() {
 						if (callback && !shouldError) {
 							setTimeout(() => callback(mockResponse), 0);
@@ -80,6 +86,9 @@ suite('Service Tests', () => {
 					},
 					destroy: function() {}
 				};
+
+				// Store options for verification
+				(mockRequest as any).options = options;
 
 				return mockRequest;
 			} as any;
@@ -141,6 +150,159 @@ suite('Service Tests', () => {
 				assert.ok((error as Error).message.includes('Network error'));
 			}
 		});
+
+		// Publishing Tests
+		test('Should publish post successfully with 201 response', async () => {
+			const mockHeaders = { location: 'https://example.micro.blog/published-post' };
+			mockHttpRequest({}, 201, false, mockHeaders);
+			
+			const credentials = new Credentials('test-token');
+			const apiClient = new ApiClient(credentials);
+			const postData: MicropubPost = {
+				h: 'entry',
+				name: 'Test Post',
+				content: 'This is test content'
+			};
+			
+			const result = await apiClient.publishPost(postData);
+			
+			assert.strictEqual(result.url, 'https://example.micro.blog/published-post');
+		});
+
+		test('Should publish post successfully with 202 response', async () => {
+			const mockHeaders = { location: 'https://example.micro.blog/accepted-post' };
+			mockHttpRequest({}, 202, false, mockHeaders);
+			
+			const credentials = new Credentials('test-token');
+			const apiClient = new ApiClient(credentials);
+			const postData: MicropubPost = {
+				h: 'entry',
+				name: 'Test Post',
+				content: 'Test content'
+			};
+			
+			const result = await apiClient.publishPost(postData);
+			
+			assert.strictEqual(result.url, 'https://example.micro.blog/accepted-post');
+		});
+
+		test('Should handle publish error with 400 status', async () => {
+			mockHttpRequest({}, 400, false);
+			
+			const credentials = new Credentials('test-token');
+			const apiClient = new ApiClient(credentials);
+			const postData: MicropubPost = {
+				h: 'entry',
+				name: 'Invalid Post',
+				content: 'Invalid content'
+			};
+			
+			try {
+				await apiClient.publishPost(postData);
+				assert.fail('Should have thrown an error');
+			} catch (error) {
+				assert.ok(error instanceof Error);
+				assert.ok((error as Error).message.includes('Publishing failed with status 400'));
+			}
+		});
+
+		test('Should handle publish error with 401 status', async () => {
+			mockHttpRequest({}, 401, false);
+			
+			const credentials = new Credentials('test-token');
+			const apiClient = new ApiClient(credentials);
+			const postData: MicropubPost = {
+				h: 'entry',
+				name: 'Unauthorized Post',
+				content: 'Unauthorized content'
+			};
+			
+			try {
+				await apiClient.publishPost(postData);
+				assert.fail('Should have thrown an error');
+			} catch (error) {
+				assert.ok(error instanceof Error);
+				assert.ok((error as Error).message.includes('Publishing failed with status 401'));
+			}
+		});
+
+		test('Should handle publish network error', async () => {
+			mockHttpRequest({}, 200, true);
+			
+			const credentials = new Credentials('test-token');
+			const apiClient = new ApiClient(credentials);
+			const postData: MicropubPost = {
+				h: 'entry',
+				name: 'Network Error Post',
+				content: 'Network error content'
+			};
+			
+			try {
+				await apiClient.publishPost(postData);
+				assert.fail('Should have thrown an error');
+			} catch (error) {
+				assert.ok(error instanceof Error);
+				assert.ok((error as Error).message.includes('Network error'));
+			}
+		});
+
+		test('Should format publish request correctly', async () => {
+			let capturedRequest: any;
+			
+			// Enhanced mock to capture request details
+			(https as any).request = function(options: any, callback?: any) {
+				capturedRequest = { options };
+				
+				const mockResponse = {
+					statusCode: 201,
+					headers: { location: 'https://example.micro.blog/test' },
+					on: function(event: string, handler: Function) {
+						if (event === 'data') {
+							setTimeout(() => handler(''), 0);
+						} else if (event === 'end') {
+							setTimeout(() => handler(), 0);
+						}
+					}
+				};
+
+				const mockRequest = {
+					on: function(event: string, handler: Function) {},
+					setTimeout: function(timeout: number, handler: Function) {},
+					write: function(data: string) {
+						capturedRequest.body = data;
+					},
+					end: function() {
+						if (callback) {
+							setTimeout(() => callback(mockResponse), 0);
+						}
+					},
+					destroy: function() {}
+				};
+
+				return mockRequest;
+			} as any;
+			
+			const credentials = new Credentials('test-token');
+			const apiClient = new ApiClient(credentials);
+			const postData: MicropubPost = {
+				h: 'entry',
+				name: 'Format Test',
+				content: 'Format test content'
+			};
+			
+			await apiClient.publishPost(postData);
+			
+			// Verify request format
+			assert.strictEqual(capturedRequest.options.method, 'POST');
+			assert.strictEqual(capturedRequest.options.hostname, 'micro.blog');
+			assert.strictEqual(capturedRequest.options.path, '/micropub');
+			assert.strictEqual(capturedRequest.options.headers['Authorization'], 'Bearer test-token');
+			assert.strictEqual(capturedRequest.options.headers['Content-Type'], 'application/x-www-form-urlencoded');
+			
+			// Verify form data encoding
+			const expectedBody = 'h=entry&name=Format+Test&content=Format+test+content';
+			assert.strictEqual(capturedRequest.body, expectedBody);
+		});
 	});
 
 	suite('MicroblogService Tests', () => {
@@ -199,6 +361,176 @@ suite('Service Tests', () => {
 			
 			assert.strictEqual(result.isValid, false);
 			assert.ok(result.error?.includes('No credentials configured'));
+		});
+	});
+
+	suite('PublishingService Tests', () => {
+		let mockApiClient: any;
+		let publishingService: PublishingService;
+
+		setup(() => {
+			// Create mock ApiClient
+			mockApiClient = {
+				publishPost: async (postData: MicropubPost) => {
+					// Default successful response
+					return { url: 'https://example.micro.blog/published-post' };
+				}
+			};
+			
+			publishingService = new PublishingService(mockApiClient);
+		});
+
+		test('Should publish valid post successfully', async () => {
+			const localPost = LocalPost.create('Test Post', 'This is test content');
+			
+			const result = await publishingService.publishPost(localPost);
+			
+			assert.strictEqual(result.success, true);
+			assert.strictEqual(result.url, 'https://example.micro.blog/published-post');
+			assert.strictEqual(result.error, undefined);
+		});
+
+		test('Should fail validation for post with empty title', async () => {
+			const localPost = LocalPost.create('', 'Content without title');
+			
+			const result = await publishingService.publishPost(localPost);
+			
+			assert.strictEqual(result.success, false);
+			assert.ok(result.error?.includes('Validation failed'));
+			assert.ok(result.error?.includes('Post title is required'));
+			assert.strictEqual(result.url, undefined);
+		});
+
+		test('Should fail validation for post with empty content', async () => {
+			const localPost = LocalPost.create('Title without content', '');
+			
+			const result = await publishingService.publishPost(localPost);
+			
+			assert.strictEqual(result.success, false);
+			assert.ok(result.error?.includes('Validation failed'));
+			assert.ok(result.error?.includes('Post content is required'));
+			assert.strictEqual(result.url, undefined);
+		});
+
+		test('Should handle API client error', async () => {
+			// Mock API client to throw error
+			mockApiClient.publishPost = async () => {
+				throw new Error('API request failed');
+			};
+			
+			const localPost = LocalPost.create('Test Post', 'Test content');
+			
+			const result = await publishingService.publishPost(localPost);
+			
+			assert.strictEqual(result.success, false);
+			assert.strictEqual(result.error, 'API request failed');
+			assert.strictEqual(result.url, undefined);
+		});
+
+		test('Should convert LocalPost to correct Micropub format', async () => {
+			let capturedPostData: MicropubPost | undefined;
+			
+			// Mock API client to capture the post data
+			mockApiClient.publishPost = async (postData: MicropubPost) => {
+				capturedPostData = postData;
+				return { url: 'https://example.micro.blog/test' };
+			};
+			
+			const localPost = LocalPost.create('Test Title', 'Test content for publishing');
+			
+			await publishingService.publishPost(localPost);
+			
+			assert.ok(capturedPostData);
+			assert.strictEqual(capturedPostData.h, 'entry');
+			assert.strictEqual(capturedPostData.name, 'Test Title');
+			assert.strictEqual(capturedPostData.content, 'Test content for publishing');
+		});
+
+		test('Should handle unknown error types', async () => {
+			// Mock API client to throw non-Error object
+			mockApiClient.publishPost = async () => {
+				throw 'String error';
+			};
+			
+			const localPost = LocalPost.create('Test Post', 'Test content');
+			
+			const result = await publishingService.publishPost(localPost);
+			
+			assert.strictEqual(result.success, false);
+			assert.strictEqual(result.error, 'Unknown error occurred');
+			assert.strictEqual(result.url, undefined);
+		});
+	});
+
+	suite('Publishing Integration Tests', () => {
+		test('Should handle end-to-end publishing workflow', async () => {
+			// Create a real PublishingService with mocked ApiClient
+			let capturedPostData: MicropubPost | undefined;
+			
+			const mockApiClient = {
+				publishPost: async (postData: MicropubPost) => {
+					capturedPostData = postData;
+					return { url: 'https://example.micro.blog/integration-test' };
+				}
+			};
+			
+			const publishingService = new PublishingService(mockApiClient as any);
+			const localPost = LocalPost.create('Integration Test', 'Full workflow test content');
+			
+			// Execute the complete workflow
+			const result = await publishingService.publishPost(localPost);
+			
+			// Verify result
+			assert.strictEqual(result.success, true);
+			assert.strictEqual(result.url, 'https://example.micro.blog/integration-test');
+			
+			// Verify the data passed through the pipeline correctly
+			assert.ok(capturedPostData);
+			assert.strictEqual(capturedPostData.h, 'entry');
+			assert.strictEqual(capturedPostData.name, 'Integration Test');
+			assert.strictEqual(capturedPostData.content, 'Full workflow test content');
+		});
+
+		test('Should handle malformed API responses gracefully', async () => {
+			const mockApiClient = {
+				publishPost: async () => {
+					// Return malformed response (missing url property)
+					return {} as any;
+				}
+			};
+			
+			const publishingService = new PublishingService(mockApiClient as any);
+			const localPost = LocalPost.create('Malformed Response Test', 'Test content');
+			
+			const result = await publishingService.publishPost(localPost);
+			
+			// Should still succeed but with undefined URL
+			assert.strictEqual(result.success, true);
+			assert.strictEqual(result.url, undefined);
+			assert.strictEqual(result.error, undefined);
+		});
+
+		test('Should handle special characters in content', async () => {
+			let capturedPostData: MicropubPost | undefined;
+			
+			const mockApiClient = {
+				publishPost: async (postData: MicropubPost) => {
+					capturedPostData = postData;
+					return { url: 'https://example.micro.blog/special-chars' };
+				}
+			};
+			
+			const publishingService = new PublishingService(mockApiClient as any);
+			
+			// Test with special characters, emojis, and HTML entities
+			const specialContent = 'Test with émojis 🎉, "quotes", <tags>, & ampersands!';
+			const localPost = LocalPost.create('Special Characters Test', specialContent);
+			
+			const result = await publishingService.publishPost(localPost);
+			
+			assert.strictEqual(result.success, true);
+			assert.ok(capturedPostData);
+			assert.strictEqual(capturedPostData.content, specialContent);
 		});
 	});
 });

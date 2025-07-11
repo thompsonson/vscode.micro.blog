@@ -3,6 +3,7 @@ import { URL } from 'url';
 import { Post, PostProperties } from '../domain/Post';
 import { Credentials } from '../domain/Credentials';
 import { TIMEOUTS } from '../config/constants';
+import { MicropubPost } from './PublishingService';
 
 export interface MicropubResponse {
 	type: string[];
@@ -14,6 +15,11 @@ export interface VerifyTokenResponse {
 	name: string;
 	username: string;
 	avatar?: string;
+	error?: string;
+}
+
+export interface PublishResponse {
+	url?: string;
 	error?: string;
 }
 
@@ -143,6 +149,73 @@ export class ApiClient {
 			});
 
 			req.write(postData);
+			req.end();
+		});
+	}
+
+	async publishPost(postData: MicropubPost): Promise<PublishResponse> {
+		const url = new URL('https://micro.blog/micropub');
+		
+		console.log(`[Micro.blog] Publishing post: ${postData.name}`);
+		
+		return new Promise((resolve, reject) => {
+			// Convert post data to form-encoded format
+			const formData = new URLSearchParams();
+			formData.append('h', postData.h);
+			formData.append('name', postData.name);
+			formData.append('content', postData.content);
+			
+			const postBody = formData.toString();
+			
+			const options = {
+				hostname: url.hostname,
+				port: url.port || 443,
+				path: url.pathname,
+				method: 'POST',
+				headers: {
+					'Authorization': this.credentials.getAuthorizationHeader(),
+					'Content-Type': 'application/x-www-form-urlencoded',
+					'Content-Length': Buffer.byteLength(postBody),
+					'Accept': 'application/json'
+				}
+			};
+
+			const req = https.request(options, (res) => {
+				let data = '';
+				
+				res.on('data', (chunk) => {
+					data += chunk;
+				});
+				
+				res.on('end', () => {
+					try {
+						if (res.statusCode === 201 || res.statusCode === 202) {
+							// Successful post creation
+							const location = res.headers.location as string;
+							console.log(`[Micro.blog] Post published successfully: ${location || 'No location header'}`);
+							resolve({ url: location });
+						} else {
+							console.error(`[Micro.blog] Publishing failed with status ${res.statusCode}`);
+							reject(new Error(`Publishing failed with status ${res.statusCode}`));
+						}
+					} catch (error) {
+						console.error(`[Micro.blog] Failed to process publish response:`, error);
+						reject(new Error(`Failed to process publish response: ${error}`));
+					}
+				});
+			});
+
+			req.on('error', (error) => {
+				console.error(`[Micro.blog] Network error during publishing:`, error);
+				reject(new Error(`Network error: ${error.message}`));
+			});
+
+			req.setTimeout(TIMEOUTS.API_REQUEST, () => {
+				req.destroy();
+				reject(new Error('Publish request timeout'));
+			});
+
+			req.write(postBody);
 			req.end();
 		});
 	}

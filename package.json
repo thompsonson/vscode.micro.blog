@@ -2,7 +2,7 @@
   "name": "micro-blog-vscode",
   "displayName": "Micro.blog",
   "description": "A VS Code extension for micro.blog integration",
-  "version": "0.1.20250711",
+  "version": "0.2.20250711",
   "engines": {
     "vscode": "^1.74.0"
   },
@@ -36,6 +36,11 @@
         "command": "microblog.newPost",
         "title": "New Post",
         "icon": "$(add)"
+      },
+      {
+        "command": "microblog.publishPost",
+        "title": "Publish to Micro.blog",
+        "icon": "$(cloud-upload)"
       }
     ],
     "views": {
@@ -62,6 +67,13 @@
           "command": "microblog.newPost",
           "when": "view == microblogPosts",
           "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "microblog.publishPost",
+          "when": "view == microblogPosts && viewItem == localPost",
+          "group": "publish"
         }
       ]
     }

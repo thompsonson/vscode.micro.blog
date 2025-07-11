@@ -144,4 +144,9 @@ export class MicroblogService {
 	private async saveCredentials(credentials: Credentials): Promise<void> {
 		await this.secretStorage.store(MicroblogService.CREDENTIALS_KEY, credentials.appToken);
 	}
+
+	async getApiClient(): Promise<ApiClient | undefined> {
+		const credentials = await this.getCredentials();
+		return credentials ? new ApiClient(credentials) : undefined;
+	}
 }

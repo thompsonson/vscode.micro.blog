@@ -114,6 +114,37 @@ export class LocalPost {
 	}
 
 	/**
+	 * Convert local post to Micropub format for publishing
+	 */
+	public toMicropubFormat(): { [key: string]: string } {
+		return {
+			'h': 'entry',
+			'name': this.title,
+			'content': this.content
+		};
+	}
+
+	/**
+	 * Validate if post is ready for publishing
+	 */
+	public validateForPublishing(): { isValid: boolean; errors: string[] } {
+		const errors: string[] = [];
+
+		if (!this.title || this.title.trim().length === 0) {
+			errors.push('Post title is required');
+		}
+
+		if (!this.content || this.content.trim().length === 0) {
+			errors.push('Post content is required');
+		}
+
+		return {
+			isValid: errors.length === 0,
+			errors
+		};
+	}
+
+	/**
 	 * Create a new local post with defaults
 	 */
 	public static create(title: string, content: string = ''): LocalPost {

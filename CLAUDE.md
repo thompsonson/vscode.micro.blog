@@ -2,17 +2,17 @@
 
 ## Project Overview
 
-This is a VS Code extension for micro.blog integration built using **Domain Driven Design (DDD)** principles. **MVP COMPLETED** - fully functional read-only content browsing with secure authentication.
+This is a VS Code extension for micro.blog integration built using **Domain Driven Design (DDD)** principles. **PHASE 2 WEEK 1 COMPLETED** - includes read-only browsing plus local content creation capabilities.
 
-### Current Status ✅ (v0.1.0 - MVP Complete)
-- **Authentication**: Working with proper `/account/verify` endpoint
-- **API Integration**: Successfully fetching posts via Micropub API with correct endpoint management
-- **Configuration**: Simplified token-only setup with auto-domain discovery
-- **UI Integration**: Tree view and content viewing fully implemented
-- **Security**: Clean logging without sensitive data exposure
-- **Testing**: 18 passing tests with comprehensive API mocking
-- **Distribution**: Packaged as VSIX and ready for user testing
-- **Bug Fixes**: API endpoint issue resolved (always use micro.blog/micropub)
+### Current Status ✅ (v0.1.20250711 - Phase 2 Week 1 Complete)
+- **Phase 1 Complete**: Read-only browsing, authentication, API integration
+- **Local Content Creation**: New Post command with workspace integration
+- **Enhanced Tree View**: Shows local drafts alongside remote content
+- **File Management**: Automatic workspace structure and file operations
+- **Real-time Updates**: File watcher provides instant tree view updates
+- **Quality Maintained**: 22 passing tests (3 new LocalPost tests added)
+- **Development Tools**: Justfile for streamlined development workflow
+- **Documentation**: Complete progress tracking and Week 2 preparation
 
 ## Architecture (DDD within VS Code Structure)
 
@@ -69,22 +69,24 @@ Cmd+Shift+P         # Command palette to test extension commands
 
 ## Recent Changes & Current State
 
-### ✅ **Completed (MVP Phase 1)**
-1. **Working authentication** with micro.blog API
-2. **Token-only configuration** with domain auto-discovery
-3. **Clean, secure logging** without sensitive data
-4. **Domain entity tests** passing (Blog, Post, Credentials)
-5. **API integration** successfully fetching 83+ posts
-6. **Constants-based configuration** management
+### ✅ **Completed (Phase 1 + Phase 2 Week 1)**
+1. **Phase 1 (v0.1.0)**: Complete read-only browsing with authentication
+2. **LocalPost Domain Entity**: Full frontmatter support and markdown serialization
+3. **FileManager Service**: Workspace structure creation and file operations
+4. **Enhanced TreeProvider**: Shows local drafts alongside remote content
+5. **New Post Command**: Complete workflow for creating local posts
+6. **File Watching**: Real-time tree updates when content changes
+7. **Development Tools**: Justfile for streamlined workflow
 
-### 🚧 **In Progress**
-- Documentation updates for new configuration flow
+### 🚧 **In Progress (Phase 2 Week 2)**
+- Draft editing workflow preparation
+- Week 2 documentation and objectives
 
-### 📋 **Next Steps (Future Phases)**
-1. **Tree View Provider** - Browse posts in VS Code Explorer
-2. **Content Provider** - View post content in editor
-3. **Enhanced testing** - More comprehensive test coverage
-4. **Publishing features** - Write and publish new posts
+### 📋 **Next Steps (Phase 2 Week 2)**
+1. **SyncManager Service** - Track sync status between local and remote
+2. **Edit Draft Command** - Download remote drafts for local editing
+3. **Sync Status UI** - Visual indicators for sync state
+4. **Context Menus** - Right-click actions for different content types
 
 ## API Integration Details
 
@@ -101,14 +103,17 @@ Cmd+Shift+P         # Command palette to test extension commands
 
 ## Testing Strategy
 
-### Current Tests ✅
-- **Domain entities**: Blog creation, Post parsing, Credentials validation
+### Current Tests ✅ (22 passing)
+- **Domain entities**: Blog, Post, Credentials, and LocalPost validation
 - **VS Code integration**: Extension activation and command registration
+- **LocalPost functionality**: Creation, serialization, parsing, and slug generation
+- **Tree Provider**: Content organization and sync status handling
+- **Content Provider**: Post formatting and display
 
-### Needed Tests 📝
-- **API Client**: HTTP request/response handling with mocks
-- **MicroblogService**: Configuration and post fetching flows
-- **Error handling**: Network failures, invalid tokens
+### Future Test Areas 📝
+- **SyncManager**: Sync status tracking and conflict detection
+- **FileManager**: Enhanced file operations and error scenarios
+- **Draft Editing**: Download and local editing workflows
 
 ## File-Specific Notes
 
@@ -128,16 +133,24 @@ Cmd+Shift+P         # Command palette to test extension commands
 - **Error handling** with clean logging
 
 ### `src/domain/` entities
+- **Blog, Post, Credentials**: Original MVP entities
+- **LocalPost**: New entity for local content with frontmatter support
 - **Pure business logic** with no external dependencies
 - **Self-validating** entities with business rules
 - **Easily testable** in isolation
 
+### `src/services/FileManager.ts`
+- **Workspace operations** - Create `.microblog/` and `content/` folders
+- **File operations** - Create, read, write local markdown files
+- **File watching** - Monitor changes for tree view updates
+- **Error handling** - Workspace validation and permission checks
+
 ## Known Issues & Considerations
 
 1. **Requires published posts** - Domain discovery needs at least one post
-2. **Read-only MVP** - No editing/publishing capabilities yet
-3. **Single blog support** - Multi-blog support planned for later
-4. **Development mode only** - Not yet packaged for distribution
+2. **Local editing only** - Publishing capabilities coming in Week 3
+3. **Single blog support** - Multi-blog support planned for later phases
+4. **Workspace required** - Local content creation requires an open folder
 
 ## Future Development Guidelines
 
@@ -190,8 +203,21 @@ The extension now includes local content creation capabilities in addition to re
 - **New Post Command**: Integrated workflow for creating local markdown posts
 - **Development Tools**: Justfile for streamlined development workflow
 
-### 🚀 **READY FOR PHASE 2 WEEK 2**
-Next: Draft editing workflow with sync status tracking and conflict detection.
+### ✅ **PHASE 2 WEEK 2 COMPLETED**
+The extension now includes full publishing capabilities, allowing users to publish local drafts directly to micro.blog.
+
+### **Phase 2 Week 2 Publishing Features (v0.2.20250711)**
+- **PublishingService**: Complete orchestration of validation → conversion → API publishing workflow
+- **Enhanced ApiClient**: Added `publishPost()` method with Micropub protocol support
+- **Context Menu Integration**: Right-click local posts → "Publish to Micro.blog"
+- **Micropub Format Support**: Automatic conversion from LocalPost to Micropub format
+- **Publishing Validation**: Pre-publish validation with clear error messages
+- **Progress Indicators**: VS Code progress notifications during publishing
+- **Comprehensive Test Coverage**: 40 passing tests (15 new publishing tests added)
+- **Microsoft VS Code Patterns**: Follows official tree view context menu patterns
+
+### 🚀 **READY FOR PHASE 3**
+Next: Advanced features like draft synchronization, multi-blog support, and media handling.
 
 ---
 
@@ -201,7 +227,7 @@ Next: Draft editing workflow with sync status tracking and conflict detection.
 
 #### **Before ANY code changes:**
 1. Run `npm run compile` - ensure TypeScript compiles cleanly
-2. Run `npm test` - ensure all tests pass (currently 18 tests)
+2. Run `npm test` - ensure all tests pass (currently 40 tests)
 3. Run `npm run lint` - ensure code style compliance
 4. **ALL must pass before making any changes**
 

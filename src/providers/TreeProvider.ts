@@ -26,6 +26,7 @@ export class MicroblogTreeItem extends vscode.TreeItem {
 			this.tooltip = this.createLocalTooltip(localPost);
 			this.description = this.createLocalDescription(localPost);
 			this.iconPath = new vscode.ThemeIcon('file-text');
+			this.contextValue = 'localPost'; // Enable context menu for local posts
 			this.command = {
 				command: 'microblog.openLocalPost',
 				title: 'Open Local Post',
