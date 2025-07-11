@@ -1,6 +1,6 @@
 # Micro.blog VS Code Extension
 
-> ✅ **Phase 1 Complete** | ✅ **Phase 2 Complete** - Full local creation & publishing ready!
+> ✅ **Phase 1 Complete** | ✅ **Phase 2 Complete** | 🚧 **Phase 3 In Progress** - Now with remote uploads display!
 
 A VS Code extension for micro.blog integration that lets you browse remote content and create/edit posts locally in VS Code, built with Domain Driven Design principles.
 
@@ -33,6 +33,14 @@ A VS Code extension for micro.blog integration that lets you browse remote conte
 - **🌐 Micropub Protocol**: Full support for micro.blog's publishing API
 - **🎯 Context Menu Integration**: Native VS Code right-click workflow
 - **🛡️ Error Handling**: Comprehensive error recovery and user feedback
+
+#### **Phase 3 - Remote Uploads Display**
+- **📁 Uploads Tree View**: Shows "📁 Remote Uploads (count)" in tree view
+- **🌐 API Integration**: Fetches uploads from `/micropub/media?q=source` endpoint
+- **📸 Rich Metadata**: Displays upload date, file type icons, and alt text
+- **📋 Format Copying**: Right-click → Copy as Markdown/HTML with remote URLs
+- **⚡ Performance**: 5-minute caching to reduce API calls
+- **🔄 Fallback Support**: Gracefully falls back to local uploads on API failure
 
 ## 📦 Installation & Setup
 
@@ -75,6 +83,12 @@ A VS Code extension for micro.blog integration that lets you browse remote conte
 - **Success**: Get confirmation with optional URL to published post
 - **Error Handling**: Clear error messages for validation failures or API issues
 
+### **Viewing Uploads**
+- **Browse Uploads**: Expand "📁 Remote Uploads" in the tree view
+- **Copy Formats**: Right-click any upload → "Copy as Markdown" or "Copy as HTML"
+- **Rich Information**: See upload date, file type, and available image sizes
+- **Auto-Refresh**: Uploads cache refreshes every 5 minutes
+
 ## Architecture
 
 This extension follows Domain Driven Design (DDD) principles within VS Code's standard structure:
@@ -88,11 +102,13 @@ src/
 │   ├── Blog.ts              # Blog entity
 │   ├── Post.ts              # Post entity
 │   ├── LocalPost.ts         # Local post entity with publishing support  
+│   ├── UploadFile.ts        # Upload file entity with remote URL support
 │   └── Credentials.ts       # Authentication value object
 ├── services/                # Application services
 │   ├── MicroblogService.ts  # Main orchestration
 │   ├── ApiClient.ts         # Micropub HTTP client with publishing
 │   ├── PublishingService.ts # Publishing workflow orchestration
+│   ├── UploadManager.ts     # Remote uploads API with caching
 │   └── FileManager.ts       # Local content management
 └── providers/               # VS Code integration ✅
     ├── TreeProvider.ts      # Content tree view ✅
@@ -101,7 +117,7 @@ src/
 
 ## 🧪 Testing
 
-- **Run tests**: `npm test` (40 tests passing)
+- **Run tests**: `npm test` (104 tests passing)
 - **Coverage**: Domain logic, publishing workflow, API client with mocks, VS Code integration
 - **Manual testing**: Working with real micro.blog accounts
 
@@ -125,16 +141,15 @@ src/
 ### ✅ **Phase 1: Read-Only Browsing** (Complete)
 - Browse and view existing micro.blog content
 
-### 🚧 **Phase 2: Local Content Creation & Editing**
-- ✅ **Week 1**: Local post creation (Complete)
-- 🔄 **Week 2**: Edit remote drafts locally (In Progress)  
-- 📋 **Week 3**: Publishing capability (Planned)
+### ✅ **Phase 2: Local Content Creation & Publishing** (Complete)
+- ✅ **Week 1**: Local post creation
+- ✅ **Week 2**: Publishing capability
 
-### 📋 **Phase 3: Advanced Features** (Future)
-- Multi-blog support
-- Photo uploads  
-- Categories and tags management
-- Full bi-directional sync
+### 🚧 **Phase 3: Advanced Features** (In Progress)
+- ✅ Remote uploads display (Complete)
+- 📋 Draft synchronization (Planned)
+- 📋 Multi-blog support (Planned)
+- 📋 Enhanced media management (Planned)
 
 ## API References
 

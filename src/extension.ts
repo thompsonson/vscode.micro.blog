@@ -29,6 +29,27 @@ export function activate(context: vscode.ExtensionContext) {
 		const treeProvider = new MicroblogTreeProvider(microblogService, fileManager);
 		const contentProvider = new ContentProvider();
 		
+		// Set up API client for uploads if already configured
+		(async () => {
+			try {
+				const isConfigured = await microblogService.isConfigured();
+				if (isConfigured) {
+					console.log('[Micro.blog] Extension already configured, setting up API client for uploads');
+					const apiClient = await microblogService.getApiClient();
+					if (apiClient) {
+						console.log('[Micro.blog] API client obtained during activation, setting on TreeProvider');
+						treeProvider.setApiClient(apiClient);
+					} else {
+						console.log('[Micro.blog] Warning: No API client available despite being configured');
+					}
+				} else {
+					console.log('[Micro.blog] Extension not configured yet, uploads will be available after configuration');
+				}
+			} catch (error) {
+				console.error('[Micro.blog] Failed to set up API client during activation:', error);
+			}
+		})();
+		
 		// Register tree view
 		const treeView = vscode.window.createTreeView('microblogPosts', {
 			treeDataProvider: treeProvider,
@@ -111,11 +132,26 @@ export function activate(context: vscode.ExtensionContext) {
 					cancellable: false
 				}, async (progress) => {
 					await microblogService.configureBlog(appToken);
+					
+					// Set up API client for uploads functionality
+					console.log('[Micro.blog] Setting up API client for TreeProvider uploads');
+					try {
+						const apiClient = await microblogService.getApiClient();
+						if (apiClient) {
+							console.log('[Micro.blog] API client obtained, setting on TreeProvider');
+							treeProvider.setApiClient(apiClient);
+						} else {
+							console.log('[Micro.blog] Warning: API client not available after configuration');
+						}
+					} catch (error) {
+						console.error('[Micro.blog] Failed to get API client for TreeProvider:', error);
+					}
 				});
 
 				vscode.window.showInformationMessage('Micro.blog configured successfully!');
 				
-				// Refresh tree view to show posts
+				// Refresh tree view to show posts and uploads
+				console.log('[Micro.blog] Refreshing tree view after configuration');
 				treeProvider.refresh();
 				
 			} catch (error) {
@@ -369,6 +405,54 @@ export function activate(context: vscode.ExtensionContext) {
 				vscode.window.showErrorMessage(`Failed to publish post: ${error}`);
 			}
 		});
+
+		// Copy as Markdown command
+		const copyAsMarkdownCommand = vscode.commands.registerCommand('microblog.copyAsMarkdown', async (treeItem: MicroblogTreeItem) => {
+			try {
+				if (!treeItem || !treeItem.uploadFile) {
+					vscode.window.showErrorMessage('No upload file selected.');
+					return;
+				}
+
+				const uploadFile = treeItem.uploadFile;
+				if (!uploadFile.isImageFile()) {
+					vscode.window.showErrorMessage('Markdown format is only available for image files.');
+					return;
+				}
+
+				const markdown = uploadFile.toMarkdown();
+				await vscode.env.clipboard.writeText(markdown);
+				vscode.window.showInformationMessage(`Markdown format copied to clipboard: ${markdown}`);
+
+			} catch (error) {
+				console.error('[Micro.blog] Copy as markdown failed:', error);
+				vscode.window.showErrorMessage(`Failed to copy markdown format: ${error}`);
+			}
+		});
+
+		// Copy as HTML command
+		const copyAsHtmlCommand = vscode.commands.registerCommand('microblog.copyAsHtml', async (treeItem: MicroblogTreeItem) => {
+			try {
+				if (!treeItem || !treeItem.uploadFile) {
+					vscode.window.showErrorMessage('No upload file selected.');
+					return;
+				}
+
+				const uploadFile = treeItem.uploadFile;
+				if (!uploadFile.isImageFile()) {
+					vscode.window.showErrorMessage('HTML format is only available for image files.');
+					return;
+				}
+
+				const html = uploadFile.toHtml();
+				await vscode.env.clipboard.writeText(html);
+				vscode.window.showInformationMessage(`HTML format copied to clipboard: ${html}`);
+
+			} catch (error) {
+				console.error('[Micro.blog] Copy as HTML failed:', error);
+				vscode.window.showErrorMessage(`Failed to copy HTML format: ${error}`);
+			}
+		});
 		
 		// Register commands and providers
 		context.subscriptions.push(
@@ -380,6 +464,8 @@ export function activate(context: vscode.ExtensionContext) {
 			newPostCommand,
 			uploadImageCommand,
 			publishPostCommand,
+			copyAsMarkdownCommand,
+			copyAsHtmlCommand,
 			treeView,
 			contentProviderDisposable
 		);

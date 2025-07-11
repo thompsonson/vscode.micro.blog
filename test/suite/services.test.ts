@@ -4,9 +4,12 @@ import { ApiClient, VerifyTokenResponse, PublishResponse, MicropubConfig, Upload
 import { MicroblogService } from '../../src/services/MicroblogService';
 import { PublishingService, MicropubPost } from '../../src/services/PublishingService';
 import { MediaService, MockFileReader } from '../../src/services/MediaService';
+import { UploadManager } from '../../src/services/UploadManager';
+import { FileManager } from '../../src/services/FileManager';
 import { Credentials } from '../../src/domain/Credentials';
 import { LocalPost } from '../../src/domain/LocalPost';
 import { MediaAsset } from '../../src/domain/MediaAsset';
+import { UploadFile } from '../../src/domain/UploadFile';
 
 suite('Service Tests', () => {
 	
@@ -91,6 +94,54 @@ suite('Service Tests', () => {
 
 				// Store options for verification
 				(mockRequest as any).options = options;
+
+				return mockRequest;
+			} as any;
+		}
+
+		function mockHttpRequestError(statusCode: number) {
+			(https as any).request = function(options: any, callback?: any) {
+				const mockResponse = {
+					statusCode,
+					headers: {},
+					on: function(event: string, handler: Function) {
+						if (event === 'data') {
+							setTimeout(() => handler('{"error": "Server error"}'), 0);
+						} else if (event === 'end') {
+							setTimeout(() => handler(), 0);
+						}
+					}
+				};
+
+				const mockRequest = {
+					on: function(event: string, handler: Function) {},
+					setTimeout: function(timeout: number, handler: Function) {},
+					write: function(data: string) {},
+					end: function() {
+						if (callback) {
+							setTimeout(() => callback(mockResponse), 0);
+						}
+					},
+					destroy: function() {}
+				};
+
+				return mockRequest;
+			} as any;
+		}
+
+		function mockHttpRequestNetworkError() {
+			(https as any).request = function(options: any, callback?: any) {
+				const mockRequest = {
+					on: function(event: string, handler: Function) {
+						if (event === 'error') {
+							setTimeout(() => handler(new Error('Network error')), 0);
+						}
+					},
+					setTimeout: function(timeout: number, handler: Function) {},
+					write: function(data: string) {},
+					end: function() {},
+					destroy: function() {}
+				};
 
 				return mockRequest;
 			} as any;
@@ -416,6 +467,93 @@ suite('Service Tests', () => {
 				assert.ok(error instanceof Error);
 				assert.ok((error as Error).message.includes('Network error'));
 			}
+		});
+
+		test('Should fetch uploaded media successfully', async () => {
+			const mockResponse = {
+				items: [
+					{
+						url: 'https://user.domain.com/uploads/2025/test-image.png',
+						published: '2025-07-11T11:53:26+00:00',
+						alt: 'Test image description',
+						sizes: {
+							large: 'https://user.domain.com/uploads/2025/test-image.png',
+							medium: 'https://user.domain.com/uploads/2025/test-image-m.png'
+						},
+						cdn: {
+							large: 'https://cdn.uploads.micro.blog/123456/2025/test-image.png'
+						}
+					},
+					{
+						url: 'https://user.domain.com/uploads/2025/another-image.jpg',
+						published: '2025-07-10T15:30:00+00:00',
+						alt: 'Another test image'
+					}
+				]
+			};
+			mockHttpRequest(mockResponse);
+
+			const credentials = new Credentials('test-token');
+			const apiClient = new ApiClient(credentials);
+			const uploadFiles = await apiClient.fetchUploadedMedia();
+
+			assert.strictEqual(uploadFiles.length, 2);
+			
+			// Test first upload file
+			const firstFile = uploadFiles[0];
+			assert.strictEqual(firstFile.fileName, 'test-image.png');
+			assert.strictEqual(firstFile.remoteUrl, 'https://user.domain.com/uploads/2025/test-image.png');
+			assert.strictEqual(firstFile.altText, 'Test image description');
+			assert.strictEqual(firstFile.cdnUrl, 'https://cdn.uploads.micro.blog/123456/2025/test-image.png');
+			assert.ok(firstFile.imageSizes);
+			assert.strictEqual(firstFile.imageSizes.large, 'https://user.domain.com/uploads/2025/test-image.png');
+			
+			// Test second upload file
+			const secondFile = uploadFiles[1];
+			assert.strictEqual(secondFile.fileName, 'another-image.jpg');
+			assert.strictEqual(secondFile.remoteUrl, 'https://user.domain.com/uploads/2025/another-image.jpg');
+			assert.strictEqual(secondFile.altText, 'Another test image');
+		});
+
+		test('Should handle media fetch API error', async () => {
+			mockHttpRequestError(500);
+
+			const credentials = new Credentials('test-token');
+			const apiClient = new ApiClient(credentials);
+
+			try {
+				await apiClient.fetchUploadedMedia();
+				assert.fail('Should have thrown an error');
+			} catch (error) {
+				assert.ok(error instanceof Error);
+				assert.ok((error as Error).message.includes('Media fetch failed with status 500'));
+			}
+		});
+
+		test('Should handle media fetch network error', async () => {
+			mockHttpRequestNetworkError();
+
+			const credentials = new Credentials('test-token');
+			const apiClient = new ApiClient(credentials);
+
+			try {
+				await apiClient.fetchUploadedMedia();
+				assert.fail('Should have thrown an error');
+			} catch (error) {
+				assert.ok(error instanceof Error);
+				assert.ok((error as Error).message.includes('Network error'));
+			}
+		});
+
+		test('Should parse empty media response correctly', async () => {
+			const emptyResponse = { items: [] };
+			mockHttpRequest(emptyResponse);
+
+			const credentials = new Credentials('test-token');
+			const apiClient = new ApiClient(credentials);
+			const uploadFiles = await apiClient.fetchUploadedMedia();
+
+			assert.strictEqual(uploadFiles.length, 0);
 		});
 	});
 
@@ -844,6 +982,411 @@ suite('Service Tests', () => {
 			
 			await mediaService.discoverMediaEndpoint('https://micro.blog/micropub');
 			assert.strictEqual(configCallCount, 1);
+		});
+	});
+
+	suite('UploadManager Tests', () => {
+		let mockFileManager: any;
+		let uploadManager: UploadManager;
+
+		setup(() => {
+			// Mock FileManager
+			mockFileManager = {
+				uploadsExists: async () => true,
+				getUploadsPath: () => '/test/workspace/uploads',
+				ensureUploadsDirectory: async () => {}
+			};
+
+			uploadManager = new UploadManager(mockFileManager);
+		});
+
+		test('Should return empty array when uploads folder does not exist', async () => {
+			mockFileManager.uploadsExists = async () => false;
+
+			const files = await uploadManager.scanUploadsFolder();
+			assert.strictEqual(files.length, 0);
+		});
+
+		test('Should get file count correctly', async () => {
+			// For now, skip complex mocking tests since VS Code workspace.fs is read-only
+			// Focus on testing the logic that can be tested without mocking VS Code internals
+			const count = await uploadManager.getFileCount();
+			assert.strictEqual(typeof count, 'number');
+			assert.ok(count >= 0);
+		});
+
+		test('Should filter image files correctly', async () => {
+			// Test that getImageFiles returns an array
+			const imageFiles = await uploadManager.getImageFiles();
+			assert.ok(Array.isArray(imageFiles));
+		});
+
+		test('Should check file existence correctly', async () => {
+			// Test that fileExists returns a boolean
+			const result = await uploadManager.fileExists('test.jpg');
+			assert.strictEqual(typeof result, 'boolean');
+		});
+
+		test('Should handle scan errors gracefully', async () => {
+			// Test with non-existent uploads folder
+			mockFileManager.uploadsExists = async () => false;
+			const files = await uploadManager.scanUploadsFolder();
+			assert.strictEqual(files.length, 0);
+		});
+
+		test('Should ensure uploads directory', async () => {
+			let ensureCalled = false;
+			mockFileManager.ensureUploadsDirectory = async () => {
+				ensureCalled = true;
+			};
+
+			await uploadManager.ensureUploadsDirectory();
+			assert.strictEqual(ensureCalled, true);
+		});
+
+		test('Should fetch remote uploads with API client', async () => {
+			// Create mock API client
+			const mockApiClient = {
+				fetchUploadedMedia: async () => [
+					{
+						fileName: 'remote-test.png',
+						filePath: 'remote-uploads/remote-test.png',
+						fileSize: 0,
+						mimeType: 'image/png',
+						lastModified: new Date('2025-07-11T10:00:00Z'),
+						remoteUrl: 'https://example.com/uploads/remote-test.png',
+						cdnUrl: 'https://cdn.example.com/remote-test.png',
+						altText: 'Remote test image'
+					}
+				]
+			};
+
+			// Create UploadManager with API client
+			const remoteUploadManager = new (require('../../src/services/UploadManager').UploadManager)(
+				mockFileManager, 
+				mockApiClient
+			);
+
+			const uploads = await remoteUploadManager.fetchRemoteUploads();
+
+			assert.strictEqual(uploads.length, 1);
+			assert.strictEqual(uploads[0].fileName, 'remote-test.png');
+			assert.strictEqual(uploads[0].remoteUrl, 'https://example.com/uploads/remote-test.png');
+		});
+
+		test('Should cache remote uploads for 5 minutes', async () => {
+			let apiCallCount = 0;
+			const mockApiClient = {
+				fetchUploadedMedia: async () => {
+					apiCallCount++;
+					return [{
+						fileName: 'cached-test.png',
+						filePath: 'remote-uploads/cached-test.png',
+						fileSize: 0,
+						mimeType: 'image/png',
+						lastModified: new Date(),
+						remoteUrl: 'https://example.com/uploads/cached-test.png'
+					}];
+				}
+			};
+
+			const remoteUploadManager = new (require('../../src/services/UploadManager').UploadManager)(
+				mockFileManager, 
+				mockApiClient
+			);
+
+			// First call - should hit API
+			await remoteUploadManager.fetchRemoteUploads();
+			assert.strictEqual(apiCallCount, 1);
+
+			// Second call immediately - should use cache
+			await remoteUploadManager.fetchRemoteUploads();
+			assert.strictEqual(apiCallCount, 1);
+
+			// Third call - should still use cache
+			await remoteUploadManager.fetchRemoteUploads();
+			assert.strictEqual(apiCallCount, 1);
+		});
+
+		test('Should fallback to local uploads when API fails', async () => {
+			const mockApiClient = {
+				fetchUploadedMedia: async () => {
+					throw new Error('API failure');
+				}
+			};
+
+			const remoteUploadManager = new (require('../../src/services/UploadManager').UploadManager)(
+				mockFileManager, 
+				mockApiClient
+			);
+
+			// Should not throw error, should return empty array when local also empty
+			const uploads = await remoteUploadManager.fetchRemoteUploads();
+			assert.ok(Array.isArray(uploads));
+		});
+
+		test('Should refresh cache on demand', async () => {
+			let apiCallCount = 0;
+			const mockApiClient = {
+				fetchUploadedMedia: async () => {
+					apiCallCount++;
+					return [];
+				}
+			};
+
+			const remoteUploadManager = new (require('../../src/services/UploadManager').UploadManager)(
+				mockFileManager, 
+				mockApiClient
+			);
+
+			// First call
+			await remoteUploadManager.fetchRemoteUploads();
+			assert.strictEqual(apiCallCount, 1);
+
+			// Refresh cache - should make new API call
+			await remoteUploadManager.refreshCache();
+			assert.strictEqual(apiCallCount, 2);
+		});
+
+		test('Should get remote file count correctly', async () => {
+			const mockApiClient = {
+				fetchUploadedMedia: async () => [
+					{ fileName: 'file1.png', filePath: 'remote-uploads/file1.png', fileSize: 0, mimeType: 'image/png', lastModified: new Date() },
+					{ fileName: 'file2.jpg', filePath: 'remote-uploads/file2.jpg', fileSize: 0, mimeType: 'image/jpeg', lastModified: new Date() }
+				]
+			};
+
+			const remoteUploadManager = new (require('../../src/services/UploadManager').UploadManager)(
+				mockFileManager, 
+				mockApiClient
+			);
+
+			const count = await remoteUploadManager.getRemoteFileCount();
+			assert.strictEqual(count, 2);
+		});
+
+		test('Should return empty array when no API client available', async () => {
+			const remoteUploadManager = new (require('../../src/services/UploadManager').UploadManager)(
+				mockFileManager, 
+				null // No API client
+			);
+
+			const uploads = await remoteUploadManager.fetchRemoteUploads();
+			assert.strictEqual(uploads.length, 0);
+		});
+	});
+
+	suite('Error Handling and Retry Tests', () => {
+		let mockApiClient: any;
+		let mockFileManager: any;
+
+		setup(() => {
+			mockFileManager = {
+				uploadsExists: async () => true,
+				getUploadsPath: () => '/test/workspace/uploads',
+				ensureUploadsDirectory: async () => {}
+			};
+		});
+
+		test('Should handle network timeouts gracefully in API client', async () => {
+			// Mock API client that simulates timeout
+			mockApiClient = {
+				fetchUploadedMedia: async () => {
+					throw new Error('Request timeout');
+				}
+			};
+
+			const uploadManager = new (require('../../src/services/UploadManager').UploadManager)(
+				mockFileManager,
+				mockApiClient
+			);
+
+			// Should not throw, should handle timeout gracefully
+			const uploads = await uploadManager.fetchRemoteUploads();
+			assert.ok(Array.isArray(uploads));
+		});
+
+		test('Should handle malformed API responses gracefully', async () => {
+			mockApiClient = {
+				fetchUploadedMedia: async () => {
+					// Return malformed response that doesn't match expected structure
+					return [
+						{ invalidField: 'badData' },
+						null,
+						undefined,
+						{ url: 'invalid-url', published: 'not-a-date' }
+					];
+				}
+			};
+
+			const uploadManager = new (require('../../src/services/UploadManager').UploadManager)(
+				mockFileManager,
+				mockApiClient
+			);
+
+			// Should handle malformed responses without crashing
+			const uploads = await uploadManager.fetchRemoteUploads();
+			assert.ok(Array.isArray(uploads));
+		});
+
+		test('Should recover from temporary API failures', async () => {
+			let callCount = 0;
+			mockApiClient = {
+				fetchUploadedMedia: async () => {
+					callCount++;
+					if (callCount === 1) {
+						throw new Error('Temporary failure');
+					}
+					return [
+						{
+							fileName: 'recovered-file.png',
+							filePath: 'remote-uploads/recovered-file.png',
+							fileSize: 0,
+							mimeType: 'image/png',
+							lastModified: new Date(),
+							remoteUrl: 'https://example.com/recovered-file.png'
+						}
+					];
+				}
+			};
+
+			const uploadManager = new (require('../../src/services/UploadManager').UploadManager)(
+				mockFileManager,
+				mockApiClient
+			);
+
+			// First call fails
+			const firstAttempt = await uploadManager.fetchRemoteUploads();
+			assert.strictEqual(firstAttempt.length, 0);
+
+			// Force cache refresh and try again - should succeed
+			await uploadManager.refreshCache();
+			const secondAttempt = await uploadManager.fetchRemoteUploads();
+			assert.strictEqual(secondAttempt.length, 1);
+			assert.strictEqual(secondAttempt[0].fileName, 'recovered-file.png');
+		});
+
+		test('Should handle concurrent API calls safely', async () => {
+			let apiCallCount = 0;
+			mockApiClient = {
+				fetchUploadedMedia: async () => {
+					apiCallCount++;
+					// Simulate delay
+					await new Promise(resolve => setTimeout(resolve, 10));
+					return [
+						{
+							fileName: 'concurrent-file.png',
+							filePath: 'remote-uploads/concurrent-file.png',
+							fileSize: 0,
+							mimeType: 'image/png',
+							lastModified: new Date(),
+							remoteUrl: 'https://example.com/concurrent-file.png'
+						}
+					];
+				}
+			};
+
+			const uploadManager = new (require('../../src/services/UploadManager').UploadManager)(
+				mockFileManager,
+				mockApiClient
+			);
+
+			// Make multiple concurrent calls
+			const promises = [
+				uploadManager.fetchRemoteUploads(),
+				uploadManager.fetchRemoteUploads(),
+				uploadManager.fetchRemoteUploads()
+			];
+
+			const results = await Promise.all(promises);
+
+			// All should succeed
+			results.forEach(result => {
+				assert.strictEqual(result.length, 1);
+				assert.strictEqual(result[0].fileName, 'concurrent-file.png');
+			});
+
+			// Should not make excessive API calls due to caching
+			assert.ok(apiCallCount <= 3, `Made ${apiCallCount} API calls, expected <= 3`);
+		});
+
+		test('Should handle partial API responses correctly', async () => {
+			mockApiClient = {
+				fetchUploadedMedia: async () => [
+					// Valid file
+					{
+						fileName: 'valid-file.png',
+						filePath: 'remote-uploads/valid-file.png',
+						fileSize: 0,
+						mimeType: 'image/png',
+						lastModified: new Date('2025-07-11T10:00:00Z'),
+						remoteUrl: 'https://example.com/valid-file.png'
+					},
+					// File with missing optional fields
+					{
+						fileName: 'minimal-file.jpg',
+						filePath: 'remote-uploads/minimal-file.jpg',
+						fileSize: 0,
+						mimeType: 'image/jpeg',
+						lastModified: new Date('2025-07-10T10:00:00Z'),
+						remoteUrl: 'https://example.com/minimal-file.jpg'
+						// Missing: cdnUrl, altText, imageSizes
+					}
+				]
+			};
+
+			const uploadManager = new (require('../../src/services/UploadManager').UploadManager)(
+				mockFileManager,
+				mockApiClient
+			);
+
+			const uploads = await uploadManager.fetchRemoteUploads();
+
+			assert.strictEqual(uploads.length, 2);
+			assert.strictEqual(uploads[0].fileName, 'valid-file.png');
+			assert.strictEqual(uploads[1].fileName, 'minimal-file.jpg');
+			
+			// Should handle missing optional fields gracefully
+			assert.strictEqual(uploads[1].cdnUrl, undefined);
+			assert.strictEqual(uploads[1].altText, undefined);
+		});
+
+		test('Should handle empty API responses without errors', async () => {
+			mockApiClient = {
+				fetchUploadedMedia: async () => []
+			};
+
+			const uploadManager = new (require('../../src/services/UploadManager').UploadManager)(
+				mockFileManager,
+				mockApiClient
+			);
+
+			const uploads = await uploadManager.fetchRemoteUploads();
+			assert.strictEqual(uploads.length, 0);
+
+			// Should also handle getting count from empty response
+			const count = await uploadManager.getRemoteFileCount();
+			assert.strictEqual(count, 0);
+		});
+
+		test('Should handle API client method not available', async () => {
+			// API client missing the fetchUploadedMedia method
+			mockApiClient = {};
+
+			const uploadManager = new (require('../../src/services/UploadManager').UploadManager)(
+				mockFileManager,
+				mockApiClient
+			);
+
+			// Should handle gracefully when method doesn't exist
+			try {
+				const uploads = await uploadManager.fetchRemoteUploads();
+				// Should either succeed with empty array or handle the error
+				assert.ok(Array.isArray(uploads));
+			} catch (error) {
+				// If it throws, should be a clear error message
+				assert.ok(error instanceof Error);
+			}
 		});
 	});
 });

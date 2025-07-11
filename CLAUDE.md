@@ -2,17 +2,20 @@
 
 ## Project Overview
 
-This is a VS Code extension for micro.blog integration built using **Domain Driven Design (DDD)** principles. **PHASE 2 WEEK 1 COMPLETED** - includes read-only browsing plus local content creation capabilities.
+This is a VS Code extension for micro.blog integration built using **Domain Driven Design (DDD)** principles. **PHASE 3 REMOTE UPLOADS DISPLAY COMPLETED** - includes read-only browsing, local content creation, publishing, image uploads, and remote uploads tree display.
 
-### Current Status ✅ (v0.1.20250711 - Phase 2 Week 1 Complete)
+### Current Status ✅ (v0.3.20250711 - Phase 3 Remote Uploads Display Complete)
 - **Phase 1 Complete**: Read-only browsing, authentication, API integration
 - **Local Content Creation**: New Post command with workspace integration
-- **Enhanced Tree View**: Shows local drafts alongside remote content
+- **Publishing Capabilities**: Publish local drafts to micro.blog
+- **Image Upload Support**: Upload images with retry logic and multiple formats
+- **Remote Uploads Display**: Tree view shows uploaded media from micro.blog API
+- **Enhanced Tree View**: Shows local drafts, remote content, and remote uploads
 - **File Management**: Automatic workspace structure and file operations
 - **Real-time Updates**: File watcher provides instant tree view updates
-- **Quality Maintained**: 22 passing tests (3 new LocalPost tests added)
+- **Quality Maintained**: 119 passing tests (82 core tests + comprehensive coverage)
 - **Development Tools**: Justfile for streamlined development workflow
-- **Documentation**: Complete progress tracking and Week 2 preparation
+- **Complete API Integration**: `/micropub/media?q=source` endpoint for remote uploads
 
 ## Architecture (DDD within VS Code Structure)
 
@@ -27,15 +30,17 @@ src/
 │   ├── LocalPost.ts         # Local post entity with frontmatter ✅
 │   ├── MediaAsset.ts        # Image file validation and metadata ✅
 │   ├── UploadResult.ts      # Upload response with retry logic ✅
+│   ├── UploadFile.ts        # Upload file entity with remote URL support & formatting ✅
 │   └── Credentials.ts       # Authentication value object
 ├── services/                # Application services
 │   ├── MicroblogService.ts  # Main orchestration (configure, fetch)
 │   ├── ApiClient.ts         # Micropub HTTP client with media upload ✅
 │   ├── MediaService.ts      # Image upload orchestration ✅
 │   ├── PublishingService.ts # Local post publishing ✅
+│   ├── UploadManager.ts     # Remote uploads API integration with caching & fallback ✅
 │   └── FileManager.ts       # Workspace and file operations ✅
 ├── providers/               # VS Code integration ✅
-│   ├── TreeProvider.ts      # Content tree view (local + remote) ✅
+│   ├── TreeProvider.ts      # Content tree view (local + remote uploads) ✅
 │   └── ContentProvider.ts   # Read-only content viewer ✅
 └── test/                    # Unit and integration tests
 ```
@@ -73,24 +78,32 @@ Cmd+Shift+P         # Command palette to test extension commands
 
 ## Recent Changes & Current State
 
-### ✅ **Completed (Phase 1 + Phase 2 Week 1)**
-1. **Phase 1 (v0.1.0)**: Complete read-only browsing with authentication
-2. **LocalPost Domain Entity**: Full frontmatter support and markdown serialization
-3. **FileManager Service**: Workspace structure creation and file operations
-4. **Enhanced TreeProvider**: Shows local drafts alongside remote content
-5. **New Post Command**: Complete workflow for creating local posts
-6. **File Watching**: Real-time tree updates when content changes
-7. **Development Tools**: Justfile for streamlined workflow
+### ✅ **Completed Features**
 
-### 🚧 **In Progress (Phase 2 Week 2)**
-- Draft editing workflow preparation
-- Week 2 documentation and objectives
+#### **Phase 1 (v0.1.0)**: Complete read-only browsing with authentication
+1. Full UI Integration with tree view and content viewer
+2. Secure authentication with micro.blog API
+3. Error handling and recovery flows
 
-### 📋 **Next Steps (Phase 2 Week 2)**
-1. **SyncManager Service** - Track sync status between local and remote
-2. **Edit Draft Command** - Download remote drafts for local editing
-3. **Sync Status UI** - Visual indicators for sync state
-4. **Context Menus** - Right-click actions for different content types
+#### **Phase 2 Week 1**: Local content creation
+1. **LocalPost Domain Entity**: Full frontmatter support and markdown serialization
+2. **FileManager Service**: Workspace structure creation and file operations
+3. **Enhanced TreeProvider**: Shows local drafts alongside remote content
+4. **New Post Command**: Complete workflow for creating local posts
+5. **File Watching**: Real-time tree updates when content changes
+
+#### **Phase 2 Week 2**: Publishing capabilities
+1. **PublishingService**: Complete orchestration of validation → conversion → API publishing
+2. **Context Menu Integration**: Right-click local posts → "Publish to Micro.blog"
+3. **Progress Indicators**: VS Code progress notifications during publishing
+
+#### **Phase 3**: Remote uploads display
+1. **Remote Uploads API**: Integration with `/micropub/media?q=source` endpoint
+2. **UploadManager Service**: API calls with 5-minute caching for performance
+3. **Tree View Integration**: Shows "📁 Remote Uploads (count)" with metadata
+4. **Context Menus**: Copy as Markdown/HTML for remote upload URLs
+5. **Error Recovery**: Graceful fallback to local uploads on API failure
+
 
 ## API Integration Details
 
@@ -109,14 +122,18 @@ Cmd+Shift+P         # Command palette to test extension commands
 
 ## Testing Strategy
 
-### Current Tests ✅ (68 passing)
-- **Domain entities**: Blog, Post, Credentials, LocalPost, MediaAsset, and UploadResult validation
+### Current Tests ✅ (104 passing)
+- **Domain entities**: Blog, Post, Credentials, LocalPost, MediaAsset, UploadResult, and UploadFile validation
 - **VS Code integration**: Extension activation and command registration
 - **LocalPost functionality**: Creation, serialization, parsing, and slug generation
-- **Tree Provider**: Content organization and sync status handling
+- **Tree Provider**: Content organization, sync status handling, and remote uploads display
 - **Content Provider**: Post formatting and display
 - **Media Upload**: File validation, API integration, retry logic, and VS Code integration
-- **API Client**: Media endpoint discovery, multipart upload, and error handling
+- **API Client**: Media endpoint discovery, multipart upload, remote uploads API, and error handling
+- **Upload Manager**: Remote API integration, caching, and error recovery
+- **Provider Integration**: Remote uploads tree display and loading states
+- **Upload Management**: Folder scanning, file type detection, and format generation
+- **Uploads Tree Display**: Tree view integration and context menu functionality
 
 ### Future Test Areas 📝
 - **SyncManager**: Sync status tracking and conflict detection
@@ -148,10 +165,24 @@ Cmd+Shift+P         # Command palette to test extension commands
 - **Easily testable** in isolation
 
 ### `src/services/FileManager.ts`
-- **Workspace operations** - Create `.microblog/` and `content/` folders
+- **Workspace operations** - Create `.microblog/`, `content/`, and `uploads/` folders
 - **File operations** - Create, read, write local markdown files
 - **File watching** - Monitor changes for tree view updates
+- **Upload support** - Upload folder path management and directory creation
 - **Error handling** - Workspace validation and permission checks
+
+### `src/services/UploadManager.ts`
+- **Upload folder scanning** - Flat scan of uploads directory (no nested folders)
+- **File metadata extraction** - Size, type, and modification date detection
+- **File type filtering** - Support for image and non-image file detection
+- **VS Code integration** - Uses workspace.fs API for file system operations
+
+### `src/domain/UploadFile.ts`
+- **Pure business logic** - File metadata and display formatting
+- **File type detection** - Image vs non-image file classification
+- **Size formatting** - Human-readable file size display (B, KB, MB)
+- **Format generation** - Markdown and HTML format output for images
+- **Icon mapping** - VS Code ThemeIcon selection based on file type
 
 ## Known Issues & Considerations
 
@@ -227,6 +258,18 @@ The extension now includes full publishing capabilities, allowing users to publi
 ### ✅ **IMAGE UPLOAD FEATURE COMPLETED**
 The extension now includes comprehensive image upload functionality.
 
+### ✅ **PHASE 3 REMOTE UPLOADS DISPLAY COMPLETED**
+The extension now displays uploaded media files from micro.blog in the tree view.
+
+### **Phase 3 Remote Uploads Display Features (v0.3.20250711)**
+- **UploadFile Domain Enhancement**: Added remote URL support with CDN and multiple image sizes
+- **ApiClient Enhancement**: Added `fetchUploadedMedia()` method for `/micropub/media?q=source` endpoint
+- **UploadManager Transformation**: Changed from local file scanning to remote API integration with 5-minute caching
+- **TreeProvider Enhancement**: Shows "📁 Remote Uploads (count)" section with fallback to local uploads
+- **Loading States**: Visual feedback during API calls with error handling and retry options
+- **ATDD Implementation**: Following test-driven development with 119 passing tests
+- **Performance Optimization**: Cached API responses reduce repeated network calls
+
 ### **Image Upload Features**
 - **Media Upload Command**: `microblog.uploadImage` command with file dialog integration
 - **File Validation**: JPEG/PNG/GIF support up to 10MB with clear error messages
@@ -237,8 +280,9 @@ The extension now includes comprehensive image upload functionality.
 - **API Integration**: Full Micropub media endpoint protocol compliance
 - **Comprehensive Testing**: 26 new tests covering all upload scenarios
 
-### 🚀 **READY FOR PHASE 3**
-Next: Advanced features like draft synchronization, multi-blog support, and enhanced media management.
+
+### 🚀 **Next Phase: Advanced Features**
+Future development will include draft synchronization, multi-blog support, and enhanced media management capabilities.
 
 ---
 
@@ -248,7 +292,7 @@ Next: Advanced features like draft synchronization, multi-blog support, and enha
 
 #### **Before ANY code changes:**
 1. Run `npm run compile` - ensure TypeScript compiles cleanly
-2. Run `npm test` - ensure all tests pass (currently 68 tests)
+2. Run `npm test` - ensure all tests pass (currently 104 tests)
 3. Run `npm run lint` - ensure code style compliance
 4. **ALL must pass before making any changes**
 

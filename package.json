@@ -14,6 +14,8 @@
     "onCommand:microblog.test",
     "onCommand:microblog.newPost",
     "onCommand:microblog.uploadImage",
+    "onCommand:microblog.copyAsMarkdown",
+    "onCommand:microblog.copyAsHtml",
     "onView:microblogPosts"
   ],
   "main": "./out/src/extension.js",
@@ -47,6 +49,16 @@
         "command": "microblog.publishPost",
         "title": "Publish to Micro.blog",
         "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "microblog.copyAsMarkdown",
+        "title": "Copy as Markdown",
+        "icon": "$(markdown)"
+      },
+      {
+        "command": "microblog.copyAsHtml",
+        "title": "Copy as HTML",
+        "icon": "$(code)"
       }
     ],
     "views": {
@@ -80,6 +92,16 @@
           "command": "microblog.publishPost",
           "when": "view == microblogPosts && viewItem == localPost",
           "group": "publish"
+        },
+        {
+          "command": "microblog.copyAsMarkdown",
+          "when": "view == microblogPosts && viewItem == uploadFile",
+          "group": "formatting"
+        },
+        {
+          "command": "microblog.copyAsHtml",
+          "when": "view == microblogPosts && viewItem == uploadFile",
+          "group": "formatting"
         }
       ],
       "explorer/context": [
@@ -100,14 +122,15 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.74.0",
     "@types/mocha": "^10.0.6",
     "@types/node": "18.x",
+    "@types/vscode": "^1.74.0",
     "@typescript-eslint/eslint-plugin": "^6.13.1",
     "@typescript-eslint/parser": "^6.13.1",
-    "eslint": "^8.54.0",
-    "typescript": "^5.3.2",
     "@vscode/test-cli": "^0.0.4",
-    "@vscode/test-electron": "^2.3.8"
+    "@vscode/test-electron": "^2.3.8",
+    "dotenv": "^17.2.0",
+    "eslint": "^8.54.0",
+    "typescript": "^5.3.2"
   }
 }

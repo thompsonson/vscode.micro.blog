@@ -175,4 +175,37 @@ export class FileManager {
 	public getWorkspacePath(): string {
 		return this.workspacePath;
 	}
+
+	/**
+	 * Get the uploads directory path
+	 */
+	public getUploadsPath(): string {
+		return path.join(this.workspacePath, 'uploads');
+	}
+
+	/**
+	 * Check if uploads directory exists
+	 */
+	public async uploadsExists(): Promise<boolean> {
+		try {
+			const uploadsDir = vscode.Uri.file(this.getUploadsPath());
+			await vscode.workspace.fs.stat(uploadsDir);
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
+	/**
+	 * Ensure uploads directory exists
+	 */
+	public async ensureUploadsDirectory(): Promise<void> {
+		const uploadsDir = vscode.Uri.file(this.getUploadsPath());
+		try {
+			await vscode.workspace.fs.createDirectory(uploadsDir);
+		} catch (error) {
+			// Directory might already exist - that's okay
+			console.log('[Micro.blog] Uploads directory already exists or creation failed:', error);
+		}
+	}
 }

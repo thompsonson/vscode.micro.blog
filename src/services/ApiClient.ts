@@ -2,6 +2,7 @@ import * as https from 'https';
 import { URL } from 'url';
 import { Post, PostProperties } from '../domain/Post';
 import { Credentials } from '../domain/Credentials';
+import { UploadFile } from '../domain/UploadFile';
 import { TIMEOUTS } from '../config/constants';
 import { MicropubPost } from './PublishingService';
 
@@ -34,6 +35,24 @@ export interface MicropubConfig {
 export interface UploadResponse {
 	url?: string;
 	error?: string;
+}
+
+export interface MediaQueryResponse {
+	items: Array<{
+		url: string;
+		published: string;
+		alt?: string;
+		sizes?: {
+			large: string;
+			medium?: string;
+			small?: string;
+		};
+		cdn?: {
+			large: string;
+			medium?: string;
+			small?: string;
+		};
+	}>;
 }
 
 export class ApiClient {
@@ -377,6 +396,76 @@ export class ApiClient {
 		});
 	}
 
+	async fetchUploadedMedia(): Promise<UploadFile[]> {
+		const url = new URL('https://micro.blog/micropub/media');
+		url.searchParams.set('q', 'source');
+		
+		console.log(`[Micro.blog] ApiClient: fetchUploadedMedia called`);
+		console.log(`[Micro.blog] ApiClient: Fetching uploaded media from: ${url.hostname}${url.pathname}${url.search}`);
+		console.log(`[Micro.blog] ApiClient: Using authorization header: ${this.credentials.getAuthorizationHeader().substring(0, 20)}...`);
+		
+		return new Promise((resolve, reject) => {
+			const options = {
+				hostname: url.hostname,
+				port: url.port || 443,
+				path: url.pathname + url.search,
+				method: 'GET',
+				headers: {
+					'Authorization': this.credentials.getAuthorizationHeader(),
+					'Accept': 'application/json'
+				}
+			};
+
+			console.log(`[Micro.blog] ApiClient: Making request to:`, options);
+
+			const req = https.request(options, (res) => {
+				let data = '';
+				console.log(`[Micro.blog] ApiClient: Response status:`, res.statusCode);
+				console.log(`[Micro.blog] ApiClient: Response headers:`, res.headers);
+				
+				res.on('data', (chunk) => {
+					data += chunk;
+				});
+				
+				res.on('end', () => {
+					console.log(`[Micro.blog] ApiClient: Response data length:`, data.length);
+					console.log(`[Micro.blog] ApiClient: Response data preview:`, data.substring(0, 200));
+					try {
+						if (res.statusCode === 200) {
+							const response = JSON.parse(data) as MediaQueryResponse;
+							console.log(`[Micro.blog] ApiClient: Parsed response:`, {
+								hasItems: !!response.items,
+								itemCount: response.items?.length || 0
+							});
+							const uploadFiles = this.parseMediaResponse(response);
+							console.log(`[Micro.blog] ApiClient: Successfully fetched ${uploadFiles.length} uploaded media files`);
+							resolve(uploadFiles);
+						} else {
+							console.error(`[Micro.blog] ApiClient: Media fetch failed with status ${res.statusCode}, response:`, data);
+							reject(new Error(`Media fetch failed with status ${res.statusCode}`));
+						}
+					} catch (error) {
+						console.error(`[Micro.blog] ApiClient: Failed to parse media response:`, error);
+						console.error(`[Micro.blog] ApiClient: Raw response data:`, data);
+						reject(new Error(`Failed to parse media response: ${error}`));
+					}
+				});
+			});
+
+			req.on('error', (error) => {
+				console.error(`[Micro.blog] Network error during media fetch:`, error);
+				reject(new Error(`Network error: ${error.message}`));
+			});
+
+			req.setTimeout(TIMEOUTS.API_REQUEST, () => {
+				req.destroy();
+				reject(new Error('Media fetch timeout'));
+			});
+
+			req.end();
+		});
+	}
+
 	private parseMicropubResponse(response: any): Post[] {
 		if (!response || !Array.isArray(response.items)) {
 			return [];
@@ -419,5 +508,13 @@ export class ApiClient {
 
 	private extractArrayProperty(properties: any, key: string): string[] | undefined {
 		return properties[key];
+	}
+
+	private parseMediaResponse(response: MediaQueryResponse): UploadFile[] {
+		if (!response || !Array.isArray(response.items)) {
+			return [];
+		}
+
+		return response.items.map(item => UploadFile.fromApiResponse(item));
 	}
 }
