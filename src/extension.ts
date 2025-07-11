@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 
 import { MicroblogService } from './services/MicroblogService';
+import { FileManager } from './services/FileManager';
 import { MicroblogTreeProvider } from './providers/TreeProvider';
 import { ContentProvider } from './providers/ContentProvider';
 
@@ -8,11 +10,19 @@ export function activate(context: vscode.ExtensionContext) {
 	console.log('[Micro.blog] Extension activated');
 
 	try {
-		// Initialize MicroblogService
+		// Initialize services
 		const microblogService = new MicroblogService(context, context.secrets);
+		let fileManager: FileManager | undefined;
+		
+		// Try to initialize FileManager (requires workspace)
+		try {
+			fileManager = new FileManager();
+		} catch (error) {
+			console.log('[Micro.blog] FileManager not available - no workspace open');
+		}
 		
 		// Initialize providers
-		const treeProvider = new MicroblogTreeProvider(microblogService);
+		const treeProvider = new MicroblogTreeProvider(microblogService, fileManager);
 		const contentProvider = new ContentProvider();
 		
 		// Register tree view
@@ -20,6 +30,32 @@ export function activate(context: vscode.ExtensionContext) {
 			treeDataProvider: treeProvider,
 			showCollapseAll: true
 		});
+
+		// Set up file watcher for local content changes
+		let fileWatcher: vscode.FileSystemWatcher | undefined;
+		if (fileManager) {
+			try {
+				fileWatcher = fileManager.watchLocalChanges();
+				
+				// Refresh tree view when files change
+				fileWatcher.onDidCreate(() => {
+					console.log('[Micro.blog] Local content created - refreshing tree view');
+					treeProvider.refresh();
+				});
+				
+				fileWatcher.onDidChange(() => {
+					console.log('[Micro.blog] Local content changed - refreshing tree view');
+					treeProvider.refresh();
+				});
+				
+				fileWatcher.onDidDelete(() => {
+					console.log('[Micro.blog] Local content deleted - refreshing tree view');
+					treeProvider.refresh();
+				});
+			} catch (error) {
+				console.error('[Micro.blog] Failed to set up file watcher:', error);
+			}
+		}
 		
 		// Register content provider
 		const contentProviderDisposable = vscode.workspace.registerTextDocumentContentProvider('microblog', contentProvider);
@@ -88,6 +124,26 @@ export function activate(context: vscode.ExtensionContext) {
 		const viewPostCommand = vscode.commands.registerCommand('microblog.viewPost', (post) => {
 			contentProvider.showPost(post);
 		});
+
+		// Open local post command
+		const openLocalPostCommand = vscode.commands.registerCommand('microblog.openLocalPost', async (localPost) => {
+			if (!fileManager) {
+				vscode.window.showErrorMessage('No workspace available to open local posts.');
+				return;
+			}
+
+			try {
+				const workspacePath = fileManager.getWorkspacePath();
+				const fullPath = path.join(workspacePath, localPost.filePath);
+				const fileUri = vscode.Uri.file(fullPath);
+				
+				const document = await vscode.workspace.openTextDocument(fileUri);
+				await vscode.window.showTextDocument(document);
+			} catch (error) {
+				console.error('[Micro.blog] Failed to open local post:', error);
+				vscode.window.showErrorMessage(`Failed to open local post: ${error}`);
+			}
+		});
 		
 		// Refresh command
 		const refreshCommand = vscode.commands.registerCommand('microblog.refresh', async () => {
@@ -105,16 +161,65 @@ export function activate(context: vscode.ExtensionContext) {
 				vscode.window.showErrorMessage(`Refresh failed: ${error}`);
 			}
 		});
+
+		// New Post command
+		const newPostCommand = vscode.commands.registerCommand('microblog.newPost', async () => {
+			try {
+				if (!fileManager) {
+					vscode.window.showErrorMessage('Please open a workspace folder to create new posts.');
+					return;
+				}
+
+				const title = await vscode.window.showInputBox({
+					prompt: 'Enter title for your new post',
+					placeHolder: 'My New Post',
+					validateInput: (value) => {
+						if (!value || !value.trim()) {
+							return 'Post title is required';
+						}
+						return null;
+					}
+				});
+
+				if (!title) {
+					return;
+				}
+
+				await vscode.window.withProgress({
+					location: vscode.ProgressLocation.Notification,
+					title: 'Creating new post...',
+					cancellable: false
+				}, async () => {
+					await fileManager!.createNewPost(title.trim());
+				});
+
+				vscode.window.showInformationMessage(`New post "${title}" created successfully!`);
+				
+				// Refresh tree view to show the new post
+				treeProvider.refresh();
+				
+			} catch (error) {
+				console.error('[Micro.blog] New post creation failed:', error);
+				vscode.window.showErrorMessage(`Failed to create new post: ${error}`);
+			}
+		});
 		
 		// Register commands and providers
 		context.subscriptions.push(
 			testCommand, 
 			configureBlog, 
 			viewPostCommand, 
+			openLocalPostCommand,
 			refreshCommand,
+			newPostCommand,
 			treeView,
 			contentProviderDisposable
 		);
+
+		// Add file watcher to disposables if it exists
+		if (fileWatcher) {
+			context.subscriptions.push(fileWatcher);
+		}
 	
 	} catch (error) {
 		console.error('[Micro.blog] Extension activation failed:', error);

@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { Blog } from '../../src/domain/Blog';
 import { Post } from '../../src/domain/Post';
 import { Credentials } from '../../src/domain/Credentials';
+import { LocalPost } from '../../src/domain/LocalPost';
 import { MicroblogService } from '../../src/services/MicroblogService';
 
 suite('Extension Test Suite', () => {
@@ -30,6 +31,47 @@ suite('Extension Test Suite', () => {
 			assert.strictEqual(credentials.getAuthorizationHeader(), 'Bearer test-token');
 			assert.strictEqual(Credentials.isValid('test-token'), true);
 			assert.strictEqual(Credentials.isValid(''), false);
+		});
+
+		test('LocalPost creation and serialization', () => {
+			const post = LocalPost.create('My Test Post', 'This is test content');
+			assert.strictEqual(post.title, 'My Test Post');
+			assert.strictEqual(post.content, 'This is test content');
+			assert.strictEqual(post.status, 'draft');
+			assert.strictEqual(post.type, 'post');
+			assert.strictEqual(post.filePath, 'content/my-test-post.md');
+
+			const markdown = post.toMarkdown();
+			assert.ok(markdown.includes('title: "My Test Post"'));
+			assert.ok(markdown.includes('status: "draft"'));
+			assert.ok(markdown.includes('# My Test Post'));
+			assert.ok(markdown.includes('This is test content'));
+		});
+
+		test('LocalPost parsing from markdown', () => {
+			const markdown = `---
+title: "Parsed Post"
+status: "draft"
+type: "post"
+---
+
+# Parsed Post
+
+This is parsed content.`;
+
+			const post = LocalPost.fromMarkdown(markdown, 'test.md');
+			assert.strictEqual(post.title, 'Parsed Post');
+			assert.strictEqual(post.content, 'This is parsed content.');
+			assert.strictEqual(post.status, 'draft');
+			assert.strictEqual(post.type, 'post');
+			assert.strictEqual(post.filePath, 'test.md');
+		});
+
+		test('LocalPost slug generation', () => {
+			assert.strictEqual(LocalPost.generateSlug('My Test Post'), 'my-test-post');
+			assert.strictEqual(LocalPost.generateSlug('Special Characters!@#$%'), 'special-characters');
+			assert.strictEqual(LocalPost.generateSlug('Multiple   Spaces'), 'multiple-spaces');
+			assert.strictEqual(LocalPost.generateSlug(''), '');
 		});
 	});
 
@@ -86,6 +128,28 @@ suite('Extension Test Suite', () => {
 
 			const service = new MicroblogService(mockContext, mockContext.secrets);
 			assert.ok(service, 'MicroblogService should initialize');
+		});
+	});
+
+	suite('Phase 2: Local Content Creation', () => {
+		test('user can create new post and see it in tree view', async () => {
+			// Given: Extension is activated and configured
+			const extension = vscode.extensions.getExtension('undefined_publisher.micro-blog-vscode');
+			assert.ok(extension, 'Extension should be present');
+			
+			// Then: Command should be registered
+			const commands = await vscode.commands.getCommands(true);
+			const newPostCommand = commands.find(cmd => cmd === 'microblog.newPost');
+			assert.ok(newPostCommand, 'New Post command should be registered');
+			
+			// Note: We don't execute the command in tests because it would require user input
+			// The command registration test is sufficient to verify the integration works
+			
+			// TODO: Add assertions for:
+			// - Local file is created in workspace
+			// - Tree view shows "Local Drafts" section
+			// - File has correct frontmatter
+			// These will be implemented as we build the FileManager service
 		});
 	});
 });

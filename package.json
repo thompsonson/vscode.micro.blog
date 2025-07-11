@@ -2,7 +2,7 @@
   "name": "micro-blog-vscode",
   "displayName": "Micro.blog",
   "description": "A VS Code extension for micro.blog integration",
-  "version": "0.1.0",
+  "version": "0.1.20250711",
   "engines": {
     "vscode": "^1.74.0"
   },
@@ -12,6 +12,7 @@
   "activationEvents": [
     "onCommand:microblog.configure",
     "onCommand:microblog.test",
+    "onCommand:microblog.newPost",
     "onView:microblogPosts"
   ],
   "main": "./out/src/extension.js",
@@ -30,6 +31,11 @@
       {
         "command": "microblog.test",
         "title": "Test Micro.blog Extension"
+      },
+      {
+        "command": "microblog.newPost",
+        "title": "New Post",
+        "icon": "$(add)"
       }
     ],
     "views": {
@@ -50,6 +56,11 @@
         {
           "command": "microblog.refresh",
           "when": "view == microblogPosts && microblog:configured",
+          "group": "navigation"
+        },
+        {
+          "command": "microblog.newPost",
+          "when": "view == microblogPosts",
           "group": "navigation"
         }
       ]

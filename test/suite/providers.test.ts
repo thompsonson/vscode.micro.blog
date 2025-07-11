@@ -61,15 +61,15 @@ suite('Provider Tests', () => {
 			const children = await treeProvider.getChildren();
 			
 			assert.strictEqual(children.length, 1);
-			assert.strictEqual(children[0].label, 'Not configured');
+			assert.strictEqual(children[0].label, '📲 Configure micro.blog account');
 		});
 
 		test('Should group posts by status', async () => {
 			const children = await treeProvider.getChildren();
 			
 			assert.strictEqual(children.length, 2);
-			assert.ok(children.some(item => item.label.startsWith('Published')));
-			assert.ok(children.some(item => item.label.startsWith('Drafts')));
+			assert.ok(children.some(item => item.label.includes('Published Posts')));
+			assert.ok(children.some(item => item.label.includes('Remote Drafts')));
 		});
 	});
 

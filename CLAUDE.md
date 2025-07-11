@@ -24,13 +24,15 @@ src/
 ├── domain/                   # Core business logic (no dependencies)
 │   ├── Blog.ts              # Blog entity with domain validation
 │   ├── Post.ts              # Post entity with content parsing
+│   ├── LocalPost.ts         # Local post entity with frontmatter ✅
 │   └── Credentials.ts       # Authentication value object
 ├── services/                # Application services
 │   ├── MicroblogService.ts  # Main orchestration (configure, fetch)
-│   └── ApiClient.ts         # Micropub HTTP client
-├── providers/               # VS Code integration (future)
-│   ├── TreeProvider.ts      # Content tree view (planned)
-│   └── ContentProvider.ts   # Read-only content viewer (planned)
+│   ├── ApiClient.ts         # Micropub HTTP client
+│   └── FileManager.ts       # Workspace and file operations ✅
+├── providers/               # VS Code integration ✅
+│   ├── TreeProvider.ts      # Content tree view (local + remote) ✅
+│   └── ContentProvider.ts   # Read-only content viewer ✅
 └── test/                    # Unit and integration tests
 ```
 
@@ -177,8 +179,19 @@ Cmd+Shift+P         # Command palette to test extension commands
 - **Complete Provider Integration**: Tree and content providers fully wired
 - **Activation Events**: Proper lazy loading with VS Code best practices
 
-### 🚀 **READY FOR PHASE 2**
-The extension is now fully functional for Phase 1 (read-only browsing) and ready for Phase 2 development (content editing and publishing).
+### 🎉 **PHASE 2 WEEK 1 COMPLETED**
+The extension now includes local content creation capabilities in addition to read-only browsing.
+
+### **Phase 2 Architectural Additions (v0.1.20250711)**
+- **LocalPost Domain Entity**: Handles frontmatter, markdown serialization, and slug generation
+- **FileManager Service**: Workspace structure creation, file operations, and local content management
+- **Enhanced TreeProvider**: Shows local drafts alongside remote content with proper icons
+- **File Watching**: Real-time tree updates when local content changes
+- **New Post Command**: Integrated workflow for creating local markdown posts
+- **Development Tools**: Justfile for streamlined development workflow
+
+### 🚀 **READY FOR PHASE 2 WEEK 2**
+Next: Draft editing workflow with sync status tracking and conflict detection.
 
 ---
 
