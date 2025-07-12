@@ -145,6 +145,40 @@ export class MicroblogService {
 		await this.secretStorage.store(MicroblogService.CREDENTIALS_KEY, credentials.appToken);
 	}
 
+	async verifyAndSetContext(): Promise<boolean> {
+		try {
+			const isConfigured = await this.isConfigured();
+			if (!isConfigured) {
+				console.log('[Micro.blog] Extension not configured, skipping context setting');
+				return false;
+			}
+
+			// Verify credentials are still valid with a lightweight API call
+			const credentials = await this.getCredentials();
+			if (!credentials) {
+				console.log('[Micro.blog] No credentials found during context verification');
+				return false;
+			}
+
+			const apiClient = new ApiClient(credentials);
+			
+			// Use token verification endpoint to check if credentials are still valid
+			console.log('[Micro.blog] Verifying stored credentials...');
+			await apiClient.verifyToken(API_ENDPOINTS.TOKEN_VERIFY);
+			
+			// If verification succeeds, set the configured context
+			await vscode.commands.executeCommand('setContext', 'microblog:configured', true);
+			console.log('[Micro.blog] Credentials verified and context set to configured');
+			return true;
+			
+		} catch (error) {
+			console.log('[Micro.blog] Credential verification failed:', error);
+			// Don't set context if verification fails
+			await vscode.commands.executeCommand('setContext', 'microblog:configured', false);
+			return false;
+		}
+	}
+
 	async getApiClient(): Promise<ApiClient | undefined> {
 		const credentials = await this.getCredentials();
 		return credentials ? new ApiClient(credentials) : undefined;

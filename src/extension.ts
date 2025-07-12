@@ -29,24 +29,26 @@ export function activate(context: vscode.ExtensionContext) {
 		const treeProvider = new MicroblogTreeProvider(microblogService, fileManager);
 		const contentProvider = new ContentProvider();
 		
-		// Set up API client for uploads if already configured
+		// Verify credentials and set context for UI if already configured
 		(async () => {
 			try {
-				const isConfigured = await microblogService.isConfigured();
-				if (isConfigured) {
-					console.log('[Micro.blog] Extension already configured, setting up API client for uploads');
+				console.log('[Micro.blog] Checking if extension is already configured...');
+				const isVerified = await microblogService.verifyAndSetContext();
+				
+				if (isVerified) {
+					console.log('[Micro.blog] Extension verified and configured, setting up API client for uploads');
 					const apiClient = await microblogService.getApiClient();
 					if (apiClient) {
 						console.log('[Micro.blog] API client obtained during activation, setting on TreeProvider');
 						treeProvider.setApiClient(apiClient);
 					} else {
-						console.log('[Micro.blog] Warning: No API client available despite being configured');
+						console.log('[Micro.blog] Warning: No API client available despite being verified');
 					}
 				} else {
-					console.log('[Micro.blog] Extension not configured yet, uploads will be available after configuration');
+					console.log('[Micro.blog] Extension not configured or verification failed, uploads will be available after configuration');
 				}
 			} catch (error) {
-				console.error('[Micro.blog] Failed to set up API client during activation:', error);
+				console.error('[Micro.blog] Failed to verify configuration during activation:', error);
 			}
 		})();
 		

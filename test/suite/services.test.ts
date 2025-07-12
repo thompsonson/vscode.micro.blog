@@ -614,6 +614,11 @@ suite('Service Tests', () => {
 			assert.strictEqual(result.isValid, false);
 			assert.ok(result.error?.includes('No credentials configured'));
 		});
+
+		test('Should return false from verifyAndSetContext when extension not configured', async () => {
+			const result = await service.verifyAndSetContext();
+			assert.strictEqual(result, false);
+		});
 	});
 
 	suite('PublishingService Tests', () => {
