@@ -1,6 +1,7 @@
 import * as https from 'https';
 import { URL } from 'url';
 import { Post, PostProperties } from '../domain/Post';
+import { Page, PageProperties } from '../domain/Page';
 import { Credentials } from '../domain/Credentials';
 import { UploadFile } from '../domain/UploadFile';
 import { TIMEOUTS } from '../config/constants';
@@ -55,14 +56,25 @@ export interface MediaQueryResponse {
 	}>;
 }
 
+export interface ContentResponse {
+	posts: Post[];
+	pages: Page[];
+}
+
 export class ApiClient {
 	constructor(private credentials: Credentials) {}
 
 	async fetchPosts(endpoint: string): Promise<Post[]> {
+		const content = await this.fetchContent(endpoint);
+		return content.posts;
+	}
+
+	async fetchPages(endpoint: string): Promise<Page[]> {
 		const url = new URL(endpoint);
 		url.searchParams.set('q', 'source');
+		url.searchParams.set('mp-channel', 'pages');
 		
-		console.log(`[Micro.blog] Fetching posts from: ${url.hostname}${url.pathname}`);
+		console.log(`[Micro.blog] Fetching pages from: ${url.hostname}${url.pathname}${url.search}`);
 		
 		return new Promise((resolve, reject) => {
 			const options = {
@@ -87,9 +99,66 @@ export class ApiClient {
 					try {
 						if (res.statusCode === 200) {
 							const response = JSON.parse(data);
-							const posts = this.parseMicropubResponse(response);
-							console.log(`[Micro.blog] Successfully fetched ${posts.length} posts`);
-							resolve(posts);
+							const pages = this.parsePagesResponse(response);
+							console.log(`[Micro.blog] Successfully fetched ${pages.length} pages`);
+							resolve(pages);
+						} else {
+							console.error(`[Micro.blog] Pages API request failed with status ${res.statusCode}`);
+							reject(new Error(`Pages API request failed with status ${res.statusCode}`));
+						}
+					} catch (error) {
+						console.error(`[Micro.blog] Failed to parse pages API response:`, error);
+						reject(new Error(`Failed to parse pages API response: ${error}`));
+					}
+				});
+			});
+
+			req.on('error', (error) => {
+				console.error(`[Micro.blog] Network error during pages fetch:`, error);
+				reject(new Error(`Network error: ${error.message}`));
+			});
+
+			req.setTimeout(TIMEOUTS.API_REQUEST, () => {
+				req.destroy();
+				reject(new Error('Pages request timeout'));
+			});
+
+			req.end();
+		});
+	}
+
+	async fetchContent(endpoint: string): Promise<ContentResponse> {
+		const url = new URL(endpoint);
+		url.searchParams.set('q', 'source');
+		
+		console.log(`[Micro.blog] Fetching content from: ${url.hostname}${url.pathname}`);
+		
+		return new Promise((resolve, reject) => {
+			const options = {
+				hostname: url.hostname,
+				port: url.port || 443,
+				path: url.pathname + url.search,
+				method: 'GET',
+				headers: {
+					'Authorization': this.credentials.getAuthorizationHeader(),
+					'Accept': 'application/json'
+				}
+			};
+
+			const req = https.request(options, (res) => {
+				let data = '';
+				
+				res.on('data', (chunk) => {
+					data += chunk;
+				});
+				
+				res.on('end', () => {
+					try {
+						if (res.statusCode === 200) {
+							const response = JSON.parse(data);
+							const content = this.parseContentResponse(response);
+							console.log(`[Micro.blog] Successfully fetched ${content.posts.length} posts and ${content.pages.length} pages`);
+							resolve(content);
 						} else {
 							console.error(`[Micro.blog] API request failed with status ${res.statusCode}`);
 							reject(new Error(`API request failed with status ${res.statusCode}`));
@@ -466,25 +535,37 @@ export class ApiClient {
 		});
 	}
 
-	private parseMicropubResponse(response: any): Post[] {
+	private parseContentResponse(response: any): ContentResponse {
 		if (!response || !Array.isArray(response.items)) {
-			return [];
+			return { posts: [], pages: [] };
 		}
 
-		return response.items
-			.filter((item: any) => item.type && item.type.includes('h-entry'))
-			.map((item: any) => {
-				const properties: PostProperties = {
-					content: this.extractContent(item.properties),
-					name: this.extractProperty(item.properties, 'name'),
-					published: this.extractProperty(item.properties, 'published'),
-					'post-status': this.extractProperty(item.properties, 'post-status') as 'published' | 'draft',
-					category: this.extractArrayProperty(item.properties, 'category')
-				};
+		const posts: Post[] = [];
 
-				return new Post(properties, item.properties?.url?.[0]);
+		response.items
+			.filter((item: any) => item.type && item.type.includes('h-entry'))
+			.forEach((item: any) => {
+				const name = this.extractProperty(item.properties, 'name');
+				const content = this.extractContent(item.properties);
+				const published = this.extractProperty(item.properties, 'published');
+				const postStatus = this.extractProperty(item.properties, 'post-status') as 'published' | 'draft';
+				const category = this.extractArrayProperty(item.properties, 'category');
+				const url = item.properties?.url?.[0];
+
+				// Posts endpoint only returns posts - no page detection needed
+				const postProperties: PostProperties = {
+					content,
+					name,
+					published,
+					'post-status': postStatus,
+					category
+				};
+				posts.push(new Post(postProperties, url));
 			});
+
+		return { posts, pages: [] }; // Pages come from separate API endpoint
 	}
+
 
 	private extractContent(properties: any): string {
 		if (properties.content) {
@@ -516,5 +597,38 @@ export class ApiClient {
 		}
 
 		return response.items.map(item => UploadFile.fromApiResponse(item));
+	}
+
+	private parsePagesResponse(response: any): Page[] {
+		if (!response || !Array.isArray(response.items)) {
+			return [];
+		}
+
+		const pages: Page[] = [];
+
+		response.items
+			.filter((item: any) => item.type && item.type.includes('h-entry'))
+			.forEach((item: any) => {
+				const name = this.extractProperty(item.properties, 'name');
+				const content = this.extractContent(item.properties);
+				const published = this.extractProperty(item.properties, 'published');
+				const postStatus = this.extractProperty(item.properties, 'post-status') as 'published' | 'draft';
+				const category = this.extractArrayProperty(item.properties, 'category');
+				const url = item.properties?.url?.[0];
+
+				// No heuristics needed - pages API returns only pages
+				if (name && content) {
+					const pageProperties: PageProperties = {
+						name,
+						content,
+						published,
+						'post-status': postStatus,
+						category
+					};
+					pages.push(new Page(pageProperties, url));
+				}
+			});
+
+		return pages;
 	}
 }

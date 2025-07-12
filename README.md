@@ -1,6 +1,6 @@
 # Micro.blog VS Code Extension
 
-> ✅ **Phase 1 Complete** | ✅ **Phase 2 Complete** | 🚧 **Phase 3 In Progress** - Now with remote uploads display!
+> ✅ **Phase 1 Complete** | ✅ **Phase 2 Complete** | ✅ **Phase 3 Complete** - Now with pages and remote uploads display!
 
 A VS Code extension for micro.blog integration that lets you browse remote content and create/edit posts locally in VS Code, built with Domain Driven Design principles.
 
@@ -34,7 +34,10 @@ A VS Code extension for micro.blog integration that lets you browse remote conte
 - **🎯 Context Menu Integration**: Native VS Code right-click workflow
 - **🛡️ Error Handling**: Comprehensive error recovery and user feedback
 
-#### **Phase 3 - Remote Uploads Display**
+#### **Phase 3 (v0.3.20250711) - Pages & Remote Uploads Display**
+- **📄 Pages Tree View**: Shows "📄 Pages (count)" with user's published pages
+- **🔗 Page Navigation**: Click pages to view content in editor preview
+- **🌐 Pages API**: Uses dedicated `mp-channel=pages` endpoint for accurate data
 - **📁 Uploads Tree View**: Shows "📁 Remote Uploads (count)" in tree view
 - **🌐 API Integration**: Fetches uploads from `/micropub/media?q=source` endpoint
 - **📸 Rich Metadata**: Displays upload date, file type icons, and alt text
@@ -45,9 +48,9 @@ A VS Code extension for micro.blog integration that lets you browse remote conte
 ## 📦 Installation & Setup
 
 ### For Users
-1. **Install from VSIX**: Download `micro-blog-vscode-0.2.20250711.vsix` and install via:
+1. **Install from VSIX**: Download `micro-blog-vscode-0.3.20250711.vsix` and install via:
    - Command Palette → "Extensions: Install from VSIX"
-   - Or: `code --install-extension micro-blog-vscode-0.2.20250711.vsix`
+   - Or: `code --install-extension micro-blog-vscode-0.3.20250711.vsix`
 
 ### For Developers  
 1. Clone this repository
@@ -83,6 +86,12 @@ A VS Code extension for micro.blog integration that lets you browse remote conte
 - **Success**: Get confirmation with optional URL to published post
 - **Error Handling**: Clear error messages for validation failures or API issues
 
+### **Viewing Pages** ✨ **New!**
+- **Browse Pages**: Expand "📄 Pages" in the tree view to see all published pages
+- **View Content**: Click any page to open it in the editor preview
+- **Sorted Display**: Pages appear sorted by publish date (newest first)
+- **Error Handling**: Clear error messages if pages cannot be loaded
+
 ### **Viewing Uploads**
 - **Browse Uploads**: Expand "📁 Remote Uploads" in the tree view
 - **Copy Formats**: Right-click any upload → "Copy as Markdown" or "Copy as HTML"
@@ -101,6 +110,7 @@ src/
 ├── domain/                   # Core business logic
 │   ├── Blog.ts              # Blog entity
 │   ├── Post.ts              # Post entity
+│   ├── Page.ts              # Page entity with micro.blog pages support
 │   ├── LocalPost.ts         # Local post entity with publishing support  
 │   ├── UploadFile.ts        # Upload file entity with remote URL support
 │   └── Credentials.ts       # Authentication value object
@@ -117,8 +127,8 @@ src/
 
 ## 🧪 Testing
 
-- **Run tests**: `npm test` (104 tests passing)
-- **Coverage**: Domain logic, publishing workflow, API client with mocks, VS Code integration
+- **Run tests**: `npm test` (114 tests passing)
+- **Coverage**: Domain logic, pages API, publishing workflow, API client with mocks, VS Code integration
 - **Manual testing**: Working with real micro.blog accounts
 
 ## 🛠️ Development

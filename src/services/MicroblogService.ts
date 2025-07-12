@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
 import { Blog } from '../domain/Blog';
 import { Post } from '../domain/Post';
+import { Page } from '../domain/Page';
 import { Credentials } from '../domain/Credentials';
-import { ApiClient } from './ApiClient';
+import { ApiClient, ContentResponse } from './ApiClient';
 import { API_ENDPOINTS, STORAGE_KEYS } from '../config/constants';
 import { VerifyTokenResponse } from './ApiClient';
 
@@ -88,6 +89,11 @@ export class MicroblogService {
 	}
 
 	async fetchPosts(): Promise<Post[]> {
+		const content = await this.fetchContent();
+		return content.posts;
+	}
+
+	async fetchPages(): Promise<Page[]> {
 		const blog = await this.getBlogConfiguration();
 		const credentials = await this.getCredentials();
 
@@ -96,7 +102,19 @@ export class MicroblogService {
 		}
 
 		const apiClient = new ApiClient(credentials);
-		return await apiClient.fetchPosts(blog.apiEndpoint);
+		return await apiClient.fetchPages(blog.apiEndpoint);
+	}
+
+	async fetchContent(): Promise<ContentResponse> {
+		const blog = await this.getBlogConfiguration();
+		const credentials = await this.getCredentials();
+
+		if (!blog || !credentials) {
+			throw new Error('Blog not configured. Please run "Configure Micro.blog" command first.');
+		}
+
+		const apiClient = new ApiClient(credentials);
+		return await apiClient.fetchContent(blog.apiEndpoint);
 	}
 
 	async isConfigured(): Promise<boolean> {

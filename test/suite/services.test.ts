@@ -555,6 +555,64 @@ suite('Service Tests', () => {
 
 			assert.strictEqual(uploadFiles.length, 0);
 		});
+
+		test('Should fetch pages with mp-channel=pages parameter', async () => {
+			const mockPagesResponse = {
+				items: [
+					{
+						type: ['h-entry'],
+						properties: {
+							name: ['About Me'],
+							content: ['This is my about page with detailed information about who I am and what I do.'],
+							published: [new Date().toISOString()],
+							'post-status': ['published'],
+							category: ['page']
+						}
+					}
+				]
+			};
+
+			mockHttpRequest(mockPagesResponse);
+			
+			const credentials = new Credentials('test-token');
+			const apiClient = new ApiClient(credentials);
+			const result = await apiClient.fetchPages('https://micro.blog/micropub');
+			
+			assert.strictEqual(result.length, 1);
+			assert.strictEqual(result[0].title, 'About Me');
+			assert.strictEqual(result[0].status, 'published');
+			assert.ok(result[0].content.includes('detailed information'));
+		});
+
+		test('Should handle pages API error gracefully', async () => {
+			mockHttpRequest({ error: 'Pages not found' }, 404);
+			
+			const credentials = new Credentials('test-token');
+			const apiClient = new ApiClient(credentials);
+			
+			try {
+				await apiClient.fetchPages('https://micro.blog/micropub');
+				assert.fail('Should have thrown an error');
+			} catch (error) {
+				assert.ok(error instanceof Error);
+				assert.ok((error as Error).message.includes('Pages API request failed'));
+			}
+		});
+
+		test('Should handle pages API network error', async () => {
+			mockHttpRequest({}, 200, true); // shouldError = true
+			
+			const credentials = new Credentials('test-token');
+			const apiClient = new ApiClient(credentials);
+			
+			try {
+				await apiClient.fetchPages('https://micro.blog/micropub');
+				assert.fail('Should have thrown an error');
+			} catch (error) {
+				assert.ok(error instanceof Error);
+				assert.ok((error as Error).message.includes('Network error'));
+			}
+		});
 	});
 
 	suite('MicroblogService Tests', () => {

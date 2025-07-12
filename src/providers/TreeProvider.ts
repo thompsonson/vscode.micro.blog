@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { Post } from '../domain/Post';
+import { Page } from '../domain/Page';
 import { LocalPost } from '../domain/LocalPost';
 import { UploadFile } from '../domain/UploadFile';
 import { MicroblogService } from '../services/MicroblogService';
@@ -12,6 +13,7 @@ export class MicroblogTreeItem extends vscode.TreeItem {
 		public readonly label: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
 		public readonly post?: Post,
+		public readonly page?: Page,
 		public readonly localPost?: LocalPost,
 		public readonly uploadFile?: UploadFile
 	) {
@@ -25,6 +27,15 @@ export class MicroblogTreeItem extends vscode.TreeItem {
 				command: 'microblog.viewPost',
 				title: 'View Post',
 				arguments: [post]
+			};
+		} else if (page) {
+			this.tooltip = this.createPageTooltip(page);
+			this.description = this.createPageDescription(page);
+			this.iconPath = new vscode.ThemeIcon('browser');
+			this.command = {
+				command: 'microblog.viewPost',
+				title: 'View Page',
+				arguments: [page]
 			};
 		} else if (localPost) {
 			this.tooltip = this.createLocalTooltip(localPost);
@@ -71,6 +82,30 @@ export class MicroblogTreeItem extends vscode.TreeItem {
 		return post.status;
 	}
 
+	private createPageTooltip(page: Page): string {
+		const lines = [
+			`Title: ${page.title}`,
+			`Status: ${page.status}`,
+		];
+		
+		if (page.publishedDate) {
+			lines.push(`Published: ${page.publishedDate.toLocaleDateString()}`);
+		}
+		
+		if (page.categories.length > 0) {
+			lines.push(`Categories: ${page.categories.join(', ')}`);
+		}
+		
+		return lines.join('\n');
+	}
+
+	private createPageDescription(page: Page): string {
+		if (page.publishedDate) {
+			return page.publishedDate.toLocaleDateString();
+		}
+		return page.status;
+	}
+
 	private createLocalTooltip(localPost: LocalPost): string {
 		const lines = [
 			`Title: ${localPost.title}`,
@@ -111,6 +146,7 @@ export class MicroblogTreeProvider implements vscode.TreeDataProvider<MicroblogT
 	readonly onDidChangeTreeData: vscode.Event<MicroblogTreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
 	private posts: Post[] = [];
+	private pages: Page[] = [];
 	private localPosts: LocalPost[] = [];
 	private uploadFiles: UploadFile[] = [];
 	private uploadManager?: UploadManager;
@@ -209,39 +245,34 @@ export class MicroblogTreeProvider implements vscode.TreeDataProvider<MicroblogT
 						try {
 							this.uploadFiles = await this.uploadManager.fetchRemoteUploads();
 							console.log('[Micro.blog] TreeProvider: Remote uploads fetched:', this.uploadFiles.length, 'files');
-							if (this.uploadFiles.length > 0) {
-								console.log('[Micro.blog] TreeProvider: Adding Remote Uploads section to tree');
-								categories.push(new MicroblogTreeItem(
-									`📁 Remote Uploads (${this.uploadFiles.length})`,
-									vscode.TreeItemCollapsibleState.Expanded
-								));
-							} else {
-								console.log('[Micro.blog] TreeProvider: No remote uploads found');
-							}
+							// Always show Remote Uploads section when API client available, regardless of count
+							console.log('[Micro.blog] TreeProvider: Adding Remote Uploads section to tree');
+							categories.push(new MicroblogTreeItem(
+								`📁 Remote Uploads (${this.uploadFiles.length})`,
+								vscode.TreeItemCollapsibleState.Expanded
+							));
 						} catch (error) {
 							console.error('[Micro.blog] TreeProvider: Failed to load remote uploads:', error);
-							// Fallback to local uploads
+							// Fallback to local uploads when remote API fails
 							console.log('[Micro.blog] TreeProvider: Falling back to local uploads');
 							this.uploadFiles = await this.uploadManager.scanUploadsFolder();
 							console.log('[Micro.blog] TreeProvider: Local uploads found:', this.uploadFiles.length, 'files');
-							if (this.uploadFiles.length > 0) {
-								categories.push(new MicroblogTreeItem(
-									`📁 Local Uploads (${this.uploadFiles.length})`,
-									vscode.TreeItemCollapsibleState.Expanded
-								));
-							}
+							// Always show Local Uploads section in fallback scenario, regardless of count
+							categories.push(new MicroblogTreeItem(
+								`📁 Local Uploads (${this.uploadFiles.length})`,
+								vscode.TreeItemCollapsibleState.Expanded
+							));
 						}
 					} else {
 						console.log('[Micro.blog] TreeProvider: No API client, using local uploads only');
 						// No API client - use local uploads only
 						this.uploadFiles = await this.uploadManager.scanUploadsFolder();
 						console.log('[Micro.blog] TreeProvider: Local uploads found:', this.uploadFiles.length, 'files');
-						if (this.uploadFiles.length > 0) {
-							categories.push(new MicroblogTreeItem(
-								`📁 Local Uploads (${this.uploadFiles.length})`,
-								vscode.TreeItemCollapsibleState.Expanded
-							));
-						}
+						// Always show Local Uploads section when no API client, regardless of count
+						categories.push(new MicroblogTreeItem(
+							`📁 Local Uploads (${this.uploadFiles.length})`,
+							vscode.TreeItemCollapsibleState.Expanded
+						));
 					}
 				} catch (error) {
 					console.error('[Micro.blog] TreeProvider: Failed to load uploads:', error);
@@ -257,12 +288,36 @@ export class MicroblogTreeProvider implements vscode.TreeDataProvider<MicroblogT
 				console.log('[Micro.blog] TreeProvider: No uploadManager available - skipping uploads');
 			}
 
-			// Load remote posts if configured
+			// Load remote content (posts and pages) if configured
 			const isConfigured = await this.microblogService.isConfigured();
 			if (isConfigured) {
 				try {
 					this.loadingStates.remotePosts = true;
-					this.posts = await this.microblogService.fetchPosts();
+					
+					// Fetch posts and pages separately since they use different API endpoints
+					const content = await this.microblogService.fetchContent();
+					this.posts = content.posts;
+					
+					// Fetch pages separately using dedicated pages API
+					try {
+						console.log('[Micro.blog] TreeProvider: Fetching pages from dedicated API');
+						this.pages = await this.microblogService.fetchPages();
+						console.log('[Micro.blog] TreeProvider: Pages fetched:', this.pages.length, 'pages');
+						
+						// Always show Pages section regardless of count
+						categories.push(new MicroblogTreeItem(
+							`📄 Pages (${this.pages.length})`,
+							vscode.TreeItemCollapsibleState.Expanded
+						));
+					} catch (pagesError) {
+						console.error('[Micro.blog] TreeProvider: Failed to fetch pages:', pagesError);
+						// Show Pages section with error indicator
+						this.pages = [];
+						categories.push(new MicroblogTreeItem(
+							'❌ Pages (error loading)',
+							vscode.TreeItemCollapsibleState.None
+						));
+					}
 					
 					// Group remote posts by status
 					const publishedPosts = this.posts.filter(p => p.isPublished);
@@ -282,9 +337,9 @@ export class MicroblogTreeProvider implements vscode.TreeDataProvider<MicroblogT
 						));
 					}
 				} catch (error) {
-					console.error('[Micro.blog] Failed to fetch remote posts:', error);
+					console.error('[Micro.blog] Failed to fetch remote content:', error);
 					categories.push(new MicroblogTreeItem(
-						'❌ Error loading remote posts (click to retry)',
+						'❌ Error loading remote content (click to retry)',
 						vscode.TreeItemCollapsibleState.None
 					));
 				} finally {
@@ -309,8 +364,18 @@ export class MicroblogTreeProvider implements vscode.TreeDataProvider<MicroblogT
 					localPost.title,
 					vscode.TreeItemCollapsibleState.None,
 					undefined,
+					undefined,
 					localPost
 				));
+			} else if (element.label.includes('Pages')) {
+				return this.pages
+					.sort((a, b) => (b.publishedDate?.getTime() || 0) - (a.publishedDate?.getTime() || 0))
+					.map(page => new MicroblogTreeItem(
+						page.title,
+						vscode.TreeItemCollapsibleState.None,
+						undefined,
+						page
+					));
 			} else if (element.label.includes('Published Posts')) {
 				return this.posts
 					.filter(p => p.isPublished)
@@ -332,6 +397,7 @@ export class MicroblogTreeProvider implements vscode.TreeDataProvider<MicroblogT
 				return this.uploadFiles.map(uploadFile => new MicroblogTreeItem(
 					uploadFile.displayName,
 					vscode.TreeItemCollapsibleState.None,
+					undefined,
 					undefined,
 					undefined,
 					uploadFile

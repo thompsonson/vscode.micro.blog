@@ -2,20 +2,21 @@
 
 ## Project Overview
 
-This is a VS Code extension for micro.blog integration built using **Domain Driven Design (DDD)** principles. **PHASE 3 REMOTE UPLOADS DISPLAY COMPLETED** - includes read-only browsing, local content creation, publishing, image uploads, and remote uploads tree display.
+This is a VS Code extension for micro.blog integration built using **Domain Driven Design (DDD)** principles. **PHASE 3 COMPLETE** - includes read-only browsing, local content creation, publishing, image uploads, pages display, and remote uploads tree display.
 
-### Current Status ✅ (v0.3.20250711 - Phase 3 Remote Uploads Display Complete)
+### Current Status ✅ (v0.3.20250711 - Phase 3 Complete with Pages & Uploads)
 - **Phase 1 Complete**: Read-only browsing, authentication, API integration
 - **Local Content Creation**: New Post command with workspace integration
 - **Publishing Capabilities**: Publish local drafts to micro.blog
 - **Image Upload Support**: Upload images with retry logic and multiple formats
+- **Pages Display**: Tree view shows published pages from micro.blog with dedicated API
 - **Remote Uploads Display**: Tree view shows uploaded media from micro.blog API
-- **Enhanced Tree View**: Shows local drafts, remote content, and remote uploads
+- **Enhanced Tree View**: Shows local drafts, pages, posts, and remote uploads
 - **File Management**: Automatic workspace structure and file operations
 - **Real-time Updates**: File watcher provides instant tree view updates
-- **Quality Maintained**: 119 passing tests (82 core tests + comprehensive coverage)
+- **Quality Maintained**: 114 passing tests with comprehensive coverage
 - **Development Tools**: Justfile for streamlined development workflow
-- **Complete API Integration**: `/micropub/media?q=source` endpoint for remote uploads
+- **Complete API Integration**: Separate endpoints for posts, pages, and media uploads
 
 ## Architecture (DDD within VS Code Structure)
 
@@ -160,6 +161,7 @@ Cmd+Shift+P         # Command palette to test extension commands
 ### `src/domain/` entities
 - **Blog, Post, Credentials**: Original MVP entities
 - **LocalPost**: New entity for local content with frontmatter support
+- **Page**: New entity for micro.blog pages with proper API integration
 - **Pure business logic** with no external dependencies
 - **Self-validating** entities with business rules
 - **Easily testable** in isolation
@@ -183,6 +185,13 @@ Cmd+Shift+P         # Command palette to test extension commands
 - **Size formatting** - Human-readable file size display (B, KB, MB)
 - **Format generation** - Markdown and HTML format output for images
 - **Icon mapping** - VS Code ThemeIcon selection based on file type
+
+### `src/domain/Page.ts`
+- **Page entity** - Business logic for micro.blog pages
+- **Validation** - Required title and content validation
+- **Formatting** - Markdown link generation and relative URL extraction
+- **Status management** - Published/draft status tracking
+- **Date handling** - Publish date formatting and display
 
 ## Known Issues & Considerations
 
@@ -269,6 +278,30 @@ The extension now displays uploaded media files from micro.blog in the tree view
 - **Loading States**: Visual feedback during API calls with error handling and retry options
 - **ATDD Implementation**: Following test-driven development with 119 passing tests
 - **Performance Optimization**: Cached API responses reduce repeated network calls
+
+### ✅ **PAGES FEATURE COMPLETED**
+The extension now displays user's published pages from micro.blog in the tree view.
+
+### **Pages Feature Implementation (v0.3.20250711)**
+- **Page Domain Entity**: New Page.ts entity with validation, formatting, and metadata support
+- **API Integration**: Added `fetchPages()` method using proper `mp-channel=pages` parameter
+- **Separate API Endpoints**: Clean separation between posts and pages API calls
+- **Tree View Integration**: Shows "📄 Pages (count)" section with individual page items
+- **Content Viewing**: Click to view page content using existing ContentProvider
+- **Sorting & Display**: Pages sorted by publish date with proper titles and metadata
+- **Testing Coverage**: 114 passing tests including dedicated pages API tests
+- **Clean Architecture**: No heuristics - uses proper micro.blog pages API endpoint
+- **Error Handling**: Graceful fallback to error state when pages API fails
+- **Always Visible**: Pages section always shown regardless of count (like uploads fix)
+
+### ✅ **UPLOADS DISPLAY FIX**
+Fixed issue where uploads section would not appear when empty.
+
+### **Uploads Display Enhancement (v0.3.20250711)**
+- **Fixed TreeProvider Logic**: Always show uploads section regardless of count
+- **Clear User Feedback**: Shows "📁 Remote Uploads (0)" instead of hiding section
+- **Consistent Behavior**: Remote and local uploads always visible with proper counts
+- **Improved UX**: Users now understand when no uploads exist vs. loading issues
 
 ### **Image Upload Features**
 - **Media Upload Command**: `microblog.uploadImage` command with file dialog integration

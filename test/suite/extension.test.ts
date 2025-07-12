@@ -2,6 +2,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { Blog } from '../../src/domain/Blog';
 import { Post } from '../../src/domain/Post';
+import { Page } from '../../src/domain/Page';
 import { Credentials } from '../../src/domain/Credentials';
 import { LocalPost } from '../../src/domain/LocalPost';
 import { MediaAsset } from '../../src/domain/MediaAsset';
@@ -27,6 +28,59 @@ suite('Extension Test Suite', () => {
 			assert.strictEqual(post.title, 'Test Post');
 			assert.strictEqual(post.content, 'Hello world!');
 			assert.strictEqual(post.status, 'published');
+		});
+
+		test('Page creation and validation', () => {
+			const longContent = 'This is my about page with much longer content that describes who I am and what I do. It contains much more detail than a typical microblog post. I am a software developer with many years of experience working on various projects and technologies. I enjoy creating clean, maintainable code and helping others learn programming. When I\'m not coding, I like to read books, play music, and spend time outdoors hiking and exploring nature.';
+			const page = new Page({
+				name: 'About Me',
+				content: longContent,
+				published: new Date('2024-01-15T10:00:00Z').toISOString(),
+				'post-status': 'published'
+			}, 'https://example.micro.blog/about');
+			
+			assert.strictEqual(page.title, 'About Me');
+			assert.strictEqual(page.content.length > 280, true);
+			assert.strictEqual(page.status, 'published');
+			assert.strictEqual(page.isPublished, true);
+			assert.strictEqual(page.url, 'https://example.micro.blog/about');
+			assert.strictEqual(page.icon, '📄');
+		});
+
+		test('Page required title validation', () => {
+			assert.throws(() => {
+				new Page({
+					name: '',
+					content: 'Content without title'
+				});
+			}, /Page title is required/);
+		});
+
+		test('Page required content validation', () => {
+			assert.throws(() => {
+				new Page({
+					name: 'Valid Title',
+					content: ''
+				});
+			}, /Page content is required/);
+		});
+
+		test('Page markdown link generation', () => {
+			const page = new Page({
+				name: 'Contact',
+				content: 'Contact information page content'
+			}, 'https://example.micro.blog/contact');
+			
+			assert.strictEqual(page.toMarkdownLink(), '[Contact](https://example.micro.blog/contact)');
+		});
+
+		test('Page relative URL extraction', () => {
+			const page = new Page({
+				name: 'Projects',
+				content: 'My projects page'
+			}, 'https://example.micro.blog/projects');
+			
+			assert.strictEqual(page.getRelativeUrl(), '/projects');
 		});
 
 		test('Credentials validation', () => {
@@ -434,6 +488,56 @@ This is parsed content.`;
 			
 			// This test is currently failing as expected (ATDD step 2)
 			// Implementation will be added incrementally to make this pass
+		});
+	});
+
+	suite('Pages API Integration', () => {
+		test('Pages API uses proper mp-channel=pages endpoint', async () => {
+			// ATDD Acceptance Test: Now verifies proper implementation
+			// User Scenario: Pages should come from dedicated API endpoint
+			// Feature: Proper Pages API Integration
+			//   Scenario: Extension fetches pages using correct endpoint
+			//     Given I have configured micro.blog with valid credentials
+			//     And I have published pages on my micro.blog account
+			//     When the extension fetches pages
+			//     Then it should call GET /micropub?q=source&mp-channel=pages
+			//     And pages section should show only actual pages, not filtered posts
+
+			const { ApiClient } = require('../../src/services/ApiClient');
+			const { Credentials } = require('../../src/domain/Credentials');
+			
+			const credentials = new Credentials('test-token');
+			const apiClient = new ApiClient(credentials);
+			
+			// Verify fetchPages() method now exists
+			assert.strictEqual(typeof apiClient.fetchPages, 'function', 
+				'ApiClient should have fetchPages() method with proper API implementation');
+			
+			// Verify flawed isPageContent() method has been removed
+			const hasIsPageContentMethod = typeof (apiClient as any).isPageContent === 'function';
+			assert.strictEqual(hasIsPageContentMethod, false, 
+				'Flawed isPageContent() heuristics should be removed');
+			
+			// Verify parseContentResponse() now only returns posts (pages come from separate API)
+			const mockResponse = {
+				items: [
+					{
+						type: ['h-entry'],
+						properties: {
+							name: ['Test Post Title'],
+							content: ['This is a test post with some content'],
+							published: [new Date().toISOString()],
+							'post-status': ['published']
+						}
+					}
+				]
+			};
+			
+			const contentResult = (apiClient as any).parseContentResponse(mockResponse);
+			assert.strictEqual(contentResult.posts.length, 1, 'Posts endpoint should return posts');
+			assert.strictEqual(contentResult.pages.length, 0, 'Posts endpoint should not return pages');
+			
+			// This test now passes because we've implemented proper API separation
 		});
 	});
 

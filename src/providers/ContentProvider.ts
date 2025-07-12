@@ -1,28 +1,31 @@
 import * as vscode from 'vscode';
 import { Post } from '../domain/Post';
+import { Page } from '../domain/Page';
+
+type ContentItem = Post | Page;
 
 export class ContentProvider implements vscode.TextDocumentContentProvider {
 	private _onDidChange = new vscode.EventEmitter<vscode.Uri>();
 	readonly onDidChange = this._onDidChange.event;
 
-	private posts = new Map<string, Post>();
+	private content = new Map<string, ContentItem>();
 
 	provideTextDocumentContent(uri: vscode.Uri): string {
-		const postId = uri.path;
-		const post = this.posts.get(postId);
+		const contentId = uri.path;
+		const item = this.content.get(contentId);
 
-		if (!post) {
-			return 'Post not found';
+		if (!item) {
+			return 'Content not found';
 		}
 
-		return this.formatPostContent(post);
+		return this.formatContent(item);
 	}
 
 	showPost(post: Post): void {
-		const postId = this.generatePostId(post);
-		this.posts.set(postId, post);
+		const contentId = this.generateContentId(post);
+		this.content.set(contentId, post);
 
-		const uri = vscode.Uri.parse(`microblog:${postId}`);
+		const uri = vscode.Uri.parse(`microblog:${contentId}`);
 		
 		vscode.workspace.openTextDocument(uri).then(doc => {
 			vscode.window.showTextDocument(doc, {
@@ -32,42 +35,57 @@ export class ContentProvider implements vscode.TextDocumentContentProvider {
 		});
 	}
 
-	private generatePostId(post: Post): string {
+	showPage(page: Page): void {
+		const contentId = this.generateContentId(page);
+		this.content.set(contentId, page);
+
+		const uri = vscode.Uri.parse(`microblog:${contentId}`);
+		
+		vscode.workspace.openTextDocument(uri).then(doc => {
+			vscode.window.showTextDocument(doc, {
+				preview: true,
+				viewColumn: vscode.ViewColumn.Beside
+			});
+		});
+	}
+
+	private generateContentId(item: ContentItem): string {
 		// Use URL if available, otherwise generate from title and date
-		if (post.url) {
-			return post.url.replace(/[^a-zA-Z0-9]/g, '_');
+		if (item.url) {
+			return item.url.replace(/[^a-zA-Z0-9]/g, '_');
 		}
 		
-		const titlePart = post.title.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
-		const datePart = post.publishedDate?.toISOString().substring(0, 10) || 'draft';
+		const titlePart = item.title.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+		const datePart = item.publishedDate?.toISOString().substring(0, 10) || 'draft';
 		return `${titlePart}_${datePart}`;
 	}
 
-	private formatPostContent(post: Post): string {
+	private formatContent(item: ContentItem): string {
 		const lines: string[] = [];
 
 		// Add metadata header
 		lines.push('---');
-		lines.push(`Title: ${post.title}`);
-		lines.push(`Status: ${post.status}`);
+		lines.push(`Title: ${item.title}`);
+		lines.push(`Type: ${item instanceof Page ? 'Page' : 'Post'}`);
+		lines.push(`Status: ${item.status}`);
 		
-		if (post.publishedDate) {
-			lines.push(`Published: ${post.publishedDate.toISOString()}`);
+		if (item.publishedDate) {
+			lines.push(`Published: ${item.publishedDate.toISOString()}`);
 		}
 		
-		if (post.url) {
-			lines.push(`URL: ${post.url}`);
+		if (item.url) {
+			lines.push(`URL: ${item.url}`);
 		}
 		
-		if (post.categories.length > 0) {
-			lines.push(`Categories: ${post.categories.join(', ')}`);
+		if (item.categories.length > 0) {
+			lines.push(`Categories: ${item.categories.join(', ')}`);
 		}
 		
 		lines.push('---');
 		lines.push('');
 
 		// Add content
-		lines.push(this.cleanContent(post.content));
+		lines.push(this.cleanContent(item.content));
 
 		return lines.join('\n');
 	}

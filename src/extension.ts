@@ -9,6 +9,8 @@ import { MicroblogTreeProvider, MicroblogTreeItem } from './providers/TreeProvid
 import { ContentProvider } from './providers/ContentProvider';
 import { LocalPost } from './domain/LocalPost';
 import { MediaAsset } from './domain/MediaAsset';
+import { Post } from './domain/Post';
+import { Page } from './domain/Page';
 
 export function activate(context: vscode.ExtensionContext) {
 	console.log('[Micro.blog] Extension activated');
@@ -162,9 +164,15 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		});
 		
-		// View post command (triggered by tree item clicks)
-		const viewPostCommand = vscode.commands.registerCommand('microblog.viewPost', (post) => {
-			contentProvider.showPost(post);
+		// View post/page command (triggered by tree item clicks)
+		const viewPostCommand = vscode.commands.registerCommand('microblog.viewPost', (item) => {
+			if (item instanceof Page) {
+				contentProvider.showPage(item);
+			} else if (item instanceof Post) {
+				contentProvider.showPost(item);
+			} else {
+				console.error('[Micro.blog] Unknown content type in viewPost command:', item);
+			}
 		});
 
 		// Open local post command

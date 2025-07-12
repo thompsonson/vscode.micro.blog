@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { MicroblogTreeProvider, MicroblogTreeItem } from '../../src/providers/TreeProvider';
 import { ContentProvider } from '../../src/providers/ContentProvider';
 import { Post } from '../../src/domain/Post';
+import { Page } from '../../src/domain/Page';
 import { UploadFile } from '../../src/domain/UploadFile';
 import { MicroblogService } from '../../src/services/MicroblogService';
 
@@ -36,6 +37,23 @@ suite('Provider Tests', () => {
 					'post-status': 'draft'
 				})
 			]);
+			(mockService as any).fetchContent = () => Promise.resolve({
+				posts: [
+					new Post({
+						content: 'Test post content',
+						name: 'Test Post',
+						published: new Date().toISOString(),
+						'post-status': 'published'
+					}, 'https://example.micro.blog/test-post'),
+					new Post({
+						content: 'Draft post content',
+						name: 'Draft Post',
+						'post-status': 'draft'
+					})
+				],
+				pages: []
+			});
+			(mockService as any).fetchPages = () => Promise.resolve([]);
 			
 			treeProvider = new MicroblogTreeProvider(mockService);
 		});
@@ -68,7 +86,8 @@ suite('Provider Tests', () => {
 		test('Should group posts by status', async () => {
 			const children = await treeProvider.getChildren();
 			
-			assert.strictEqual(children.length, 2);
+			assert.strictEqual(children.length, 3);
+			assert.ok(children.some(item => item.label.includes('📄 Pages (0)')));
 			assert.ok(children.some(item => item.label.includes('Published Posts')));
 			assert.ok(children.some(item => item.label.includes('Remote Drafts')));
 		});
@@ -251,7 +270,7 @@ suite('Provider Tests', () => {
 			const uri = vscode.Uri.parse('microblog:test-post');
 			
 			// Store the post first
-			(contentProvider as any).posts.set('test-post', testPost);
+			(contentProvider as any).content.set('test-post', testPost);
 			
 			const content = contentProvider.provideTextDocumentContent(uri);
 			
@@ -266,7 +285,7 @@ suite('Provider Tests', () => {
 			const uri = vscode.Uri.parse('microblog:nonexistent');
 			const content = contentProvider.provideTextDocumentContent(uri);
 			
-			assert.strictEqual(content, 'Post not found');
+			assert.strictEqual(content, 'Content not found');
 		});
 	});
 });
