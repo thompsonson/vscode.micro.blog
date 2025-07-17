@@ -119,7 +119,10 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "test:regression": "vscode-test --config .vscode-test-regression.js",
+    "test:full": "npm run test && npm run test:regression",
+    "test:watch-regression": "npm run test:regression -- --watch"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.6",

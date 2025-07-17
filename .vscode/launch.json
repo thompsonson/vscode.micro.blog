@@ -25,6 +25,23 @@
         "${workspaceFolder}/out/test/**/*.js"
       ],
       "preLaunchTask": "npm: compile"
+    },
+    {
+      "name": "Regression Tests",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "--extensionTestsPath=${workspaceFolder}/out/test/regression",
+        "--disable-extensions"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/out/test/**/*.js"
+      ],
+      "preLaunchTask": "npm: compile",
+      "env": {
+        "VSCODE_TEST_REGRESSION": "true"
+      }
     }
   ]
 }
