@@ -319,15 +319,90 @@ Future development will include draft synchronization, multi-blog support, and e
 
 ---
 
+## 🛡️ **REGRESSION TEST PROTECTION** (CRITICAL - READ FIRST)
+
+### **NEVER MODIFY REGRESSION TESTS WITHOUT EXPLICIT PERMISSION**
+
+The regression test suite in `/test/regression/` is **PROTECTED** and should **NEVER** be modified during feature development.
+
+#### **Regression Test Rules (Non-Negotiable)**
+
+1. **READ-ONLY during feature development** - Never edit, add, or remove regression tests while implementing features
+2. **SEPARATE WORKFLOW** - Regression tests are added AFTER features are completed successfully
+3. **EXPLICIT PERMISSION REQUIRED** - Only modify regression tests when explicitly asked to add new test cases
+4. **VALIDATION NOT DEVELOPMENT** - Regression tests validate completed functionality, they don't drive development
+
+#### **When Regression Tests Can Be Modified**
+
+- ✅ **User explicitly requests** adding new regression tests for completed features
+- ✅ **User asks to fix** failing regression tests after feature changes
+- ✅ **User requests** updating existing regression test cases
+- ❌ **NEVER during feature development** - focus on unit tests only
+- ❌ **NEVER proactively** - only when specifically asked
+
+#### **Regression Test Workflow**
+
+1. **Feature Development Phase**:
+   - Implement feature using ATDD with acceptance tests in `/test/suite/`
+   - Run `npm test` to ensure acceptance tests pass
+   - Complete feature implementation
+   - Get feature working and tested
+
+2. **Regression Test Phase (Separate Task)**:
+   - User explicitly requests adding regression tests
+   - Add new test cases to `/test/regression/regression.test.ts`
+   - Follow existing test patterns and structure
+   - Ensure new tests validate the completed feature
+
+### **Test Strategy Clarification**
+
+This project uses a **two-tier testing approach**:
+
+#### **`/test/suite/` - Acceptance Tests (Development)**
+- **Purpose**: Drive feature development using ATDD
+- **Scope**: Complete user workflows and business scenarios
+- **Example**: "User creates post, edits content, publishes successfully"
+- **When to use**: During feature development to validate user requirements
+- **Dependencies**: Real VS Code APIs with external API mocking
+
+#### **`/test/regression/` - Regression Tests (Validation)**
+- **Purpose**: Validate that completed features still work after changes
+- **Scope**: End-to-end user scenarios across all features
+- **Example**: "Complete content creation and publishing workflow"
+- **When to use**: After feature completion to prevent regressions
+- **Dependencies**: Real VS Code APIs with external API mocking
+
+#### **Unit Tests (Optional)**
+- **Purpose**: Test individual components in isolation
+- **Scope**: Single classes, functions, or methods
+- **Example**: `LocalPost.validate()` returns correct errors
+- **When to use**: For complex business logic that needs isolated testing
+- **Location**: Can be added to `/test/suite/` if needed
+
+#### **Files That Are PROTECTED**
+
+- `/test/regression/regression.test.ts` - Main regression test suite
+- `/test/regression/helpers/` - All regression test helper files
+- `/test/regression/index.ts` - Regression test entry point
+- `.vscode-test-regression.js` - Regression test configuration
+- `documentation/008_regression_test_suite.md` - Regression test documentation
+
+### **Summary**
+
+**REGRESSION TESTS = PROTECTED. ASK BEFORE TOUCHING.**
+
+---
+
 ## 🛡️ **DEVELOPMENT PROTOCOLS** (Mandatory for Phase 2+)
 
 ### **Quality Gates (Non-Negotiable)**
 
 #### **Before ANY code changes:**
 1. Run `npm run compile` - ensure TypeScript compiles cleanly
-2. Run `npm test` - ensure all tests pass (currently 104 tests)
+2. Run `npm test` - ensure all acceptance tests pass (currently 114 tests)
 3. Run `npm run lint` - ensure code style compliance
 4. **ALL must pass before making any changes**
+5. **NEVER modify regression tests** - focus on acceptance tests only during development
 
 #### **After EVERY code change:**
 1. Re-run all three commands immediately
@@ -349,26 +424,29 @@ Future development will include draft synchronization, multi-blog support, and e
 - Batch multiple fixes together
 - Skip quality gates "just this once"
 - Commit failing code
+- **Modify regression tests during feature development**
 
 ### **ATDD Workflow for New Features**
 
-#### **For each user-facing feature:**
+#### **For each user-facing feature (ACCEPTANCE TESTS ONLY):**
 1. **Write user scenario first** - describe what user wants to accomplish
-2. **Convert to failing acceptance test** - test the complete user workflow
+2. **Convert to failing acceptance test** - test the complete user workflow in `/test/suite/`
 3. **Implement minimal code** to make the test pass
-4. **Add supporting unit tests** as needed for implementation details
+4. **Add supporting unit tests** as needed for implementation details (optional)
 5. **Refactor with test protection** - improve code while tests ensure no regressions
+6. **NEVER add regression tests** - those are added separately after feature completion
 
 #### **Example workflow:**
 ```typescript
 // 1. User scenario: "User creates a new blog post"
-// 2. Acceptance test: 
+// 2. Acceptance test in /test/suite/: 
 test('user can create and view new post', async () => {
   // Test complete workflow from command to tree view
 });
 // 3. Implement just enough to pass test
-// 4. Add unit tests for components
+// 4. Add supporting unit tests for components (if needed)
 // 5. Refactor implementation
+// 6. NEVER add regression tests - those come later when explicitly requested
 ```
 
 ### **Incremental Development (Recommended)**
