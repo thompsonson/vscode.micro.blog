@@ -2,21 +2,20 @@
 
 ## Project Overview
 
-This is a VS Code extension for micro.blog integration built using **Domain Driven Design (DDD)** principles. **PHASE 3 COMPLETE** - includes read-only browsing, local content creation, publishing, image uploads, pages display, and remote uploads tree display.
+This is a VS Code extension for micro.blog integration built using **Domain Driven Design (DDD)** principles. Currently in **alpha development** with core features for content browsing, creation, and publishing.
 
-### Current Status ✅ (v0.3.20250711 - Phase 3 Complete with Pages & Uploads)
-- **Phase 1 Complete**: Read-only browsing, authentication, API integration
+### Current Features (v0.3.20250711 - Alpha)
+- **Authentication & Configuration**: Simple token-based setup with auto-domain discovery
+- **Content Browsing**: Read-only viewing of posts, drafts, and pages
 - **Local Content Creation**: New Post command with workspace integration
-- **Publishing Capabilities**: Publish local drafts to micro.blog
-- **Image Upload Support**: Upload images with retry logic and multiple formats
-- **Pages Display**: Tree view shows published pages from micro.blog with dedicated API
-- **Remote Uploads Display**: Tree view shows uploaded media from micro.blog API
+- **Publishing**: Publish local drafts to micro.blog via Micropub API
+- **Media Display**: View uploaded media files in tree view
 - **Enhanced Tree View**: Shows local drafts, pages, posts, and remote uploads
 - **File Management**: Automatic workspace structure and file operations
 - **Real-time Updates**: File watcher provides instant tree view updates
 - **Quality Maintained**: 114 passing tests with comprehensive coverage
 - **Development Tools**: Justfile for streamlined development workflow
-- **Complete API Integration**: Separate endpoints for posts, pages, and media uploads
+- **API Integration**: Full Micropub protocol support for posts, pages, and media
 
 ## Architecture (DDD within VS Code Structure)
 
@@ -77,33 +76,37 @@ F5                  # Debug extension in Extension Development Host
 Cmd+Shift+P         # Command palette to test extension commands
 ```
 
-## Recent Changes & Current State
+## Feature Implementation Details
 
-### ✅ **Completed Features**
+### **Authentication & Configuration**
+- Secure token-based authentication using VS Code SecretStorage
+- Auto-discovery of blog domain from first post URL
+- Simple one-dialog setup process
 
-#### **Phase 1 (v0.1.0)**: Complete read-only browsing with authentication
-1. Full UI Integration with tree view and content viewer
-2. Secure authentication with micro.blog API
-3. Error handling and recovery flows
+### **Content Browsing & Viewing**
+- Tree view showing Published Posts, Remote Drafts, and Pages
+- Click-to-view functionality with formatted content in editor
+- Real-time refresh capabilities
 
-#### **Phase 2 Week 1**: Local content creation
-1. **LocalPost Domain Entity**: Full frontmatter support and markdown serialization
-2. **FileManager Service**: Workspace structure creation and file operations
-3. **Enhanced TreeProvider**: Shows local drafts alongside remote content
-4. **New Post Command**: Complete workflow for creating local posts
-5. **File Watching**: Real-time tree updates when content changes
+### **Local Content Creation**
+- **LocalPost Domain Entity**: Full frontmatter support and markdown serialization
+- **FileManager Service**: Workspace structure creation and file operations
+- **Enhanced TreeProvider**: Shows local drafts alongside remote content
+- **New Post Command**: Complete workflow for creating local posts
+- **File Watching**: Real-time tree updates when content changes
 
-#### **Phase 2 Week 2**: Publishing capabilities
-1. **PublishingService**: Complete orchestration of validation → conversion → API publishing
-2. **Context Menu Integration**: Right-click local posts → "Publish to Micro.blog"
-3. **Progress Indicators**: VS Code progress notifications during publishing
+### **Publishing**
+- **PublishingService**: Complete orchestration of validation → conversion → API publishing
+- **Context Menu Integration**: Right-click local posts → "Publish to Micro.blog"
+- **Progress Indicators**: VS Code progress notifications during publishing
+- **Micropub Protocol**: Full compliance with micro.blog's publishing API
 
-#### **Phase 3**: Remote uploads display
-1. **Remote Uploads API**: Integration with `/micropub/media?q=source` endpoint
-2. **UploadManager Service**: API calls with 5-minute caching for performance
-3. **Tree View Integration**: Shows "📁 Remote Uploads (count)" with metadata
-4. **Context Menus**: Copy as Markdown/HTML for remote upload URLs
-5. **Error Recovery**: Graceful fallback to local uploads on API failure
+### **Media Management**
+- **Remote Uploads Display**: Integration with `/micropub/media?q=source` endpoint
+- **UploadManager Service**: API calls with 5-minute caching for performance
+- **Tree View Integration**: Shows "📁 Remote Uploads (count)" with metadata
+- **Context Menus**: Copy as Markdown/HTML for remote upload URLs
+- **Error Recovery**: Graceful fallback to local uploads on API failure
 
 
 ## API Integration Details
@@ -223,99 +226,48 @@ Cmd+Shift+P         # Command palette to test extension commands
 - **ESLint** - Code quality
 - **@vscode/test-cli** - Testing framework
 
-## 🎉 MVP Completion Status
+## Implementation History
 
-### ✅ **COMPLETED FEATURES**
-- **Full UI Integration**: Tree view showing Published/Drafts, click-to-view content
-- **Proper Authentication**: `/account/verify` endpoint integration
-- **Error Handling**: Clear error messages and recovery flows
-- **Comprehensive Testing**: 18 passing tests with API mocks
-- **Bug Resolution**: API endpoint issue fixed (personal domains → micro.blog endpoint)
-- **Distribution**: Ready as `micro-blog-vscode-0.1.0.vsix`
+### **Initial Features (v0.1.0)**
+- Full UI Integration with tree view and content viewer
+- Secure authentication with micro.blog API
+- Content browsing for posts and drafts
+- Error handling and recovery flows
 
-### 🏗️ **ARCHITECTURE IMPROVEMENTS MADE**
-- **Enhanced API Client**: Added token verification method
-- **Improved Service Layer**: Better error handling and user feedback
-- **Fixed Domain Logic**: Blog entity always uses correct API endpoint
-- **Complete Provider Integration**: Tree and content providers fully wired
-- **Activation Events**: Proper lazy loading with VS Code best practices
+### **Local Content Support (v0.1.20250711)**
+- LocalPost domain entity with frontmatter support
+- FileManager service for workspace operations
+- Enhanced tree view showing local drafts
+- File watching for real-time updates
+- New Post command for content creation
 
-### 🎉 **PHASE 2 WEEK 1 COMPLETED**
-The extension now includes local content creation capabilities in addition to read-only browsing.
+### **Publishing Capabilities (v0.2.20250711)**
+- PublishingService for post publication workflow
+- ApiClient enhanced with Micropub POST support
+- Context menu integration for publishing
+- Progress indicators and validation
+- Comprehensive test coverage expansion
 
-### **Phase 2 Architectural Additions (v0.1.20250711)**
-- **LocalPost Domain Entity**: Handles frontmatter, markdown serialization, and slug generation
-- **FileManager Service**: Workspace structure creation, file operations, and local content management
-- **Enhanced TreeProvider**: Shows local drafts alongside remote content with proper icons
-- **File Watching**: Real-time tree updates when local content changes
-- **New Post Command**: Integrated workflow for creating local markdown posts
-- **Development Tools**: Justfile for streamlined development workflow
+### **Media & Pages Display (v0.3.20250711)**
+- Remote uploads display from API
+- Pages section with dedicated API endpoint
+- Enhanced tree view with all content types
+- Caching for performance optimization
+- Context menus for format copying
 
-### ✅ **PHASE 2 WEEK 2 COMPLETED**
-The extension now includes full publishing capabilities, allowing users to publish local drafts directly to micro.blog.
+### **Recent Fixes**
+- Fixed tree view to always show uploads section even when empty
+- Resolved API endpoint issues (personal domains → micro.blog endpoint)
+- Improved error handling for API failures
 
-### **Phase 2 Week 2 Publishing Features (v0.2.20250711)**
-- **PublishingService**: Complete orchestration of validation → conversion → API publishing workflow
-- **Enhanced ApiClient**: Added `publishPost()` method with Micropub protocol support
-- **Context Menu Integration**: Right-click local posts → "Publish to Micro.blog"
-- **Micropub Format Support**: Automatic conversion from LocalPost to Micropub format
-- **Publishing Validation**: Pre-publish validation with clear error messages
-- **Progress Indicators**: VS Code progress notifications during publishing
-- **Comprehensive Test Coverage**: 40 passing tests (15 new publishing tests added)
-- **Microsoft VS Code Patterns**: Follows official tree view context menu patterns
-
-### ✅ **IMAGE UPLOAD FEATURE COMPLETED**
-The extension now includes comprehensive image upload functionality.
-
-### ✅ **PHASE 3 REMOTE UPLOADS DISPLAY COMPLETED**
-The extension now displays uploaded media files from micro.blog in the tree view.
-
-### **Phase 3 Remote Uploads Display Features (v0.3.20250711)**
-- **UploadFile Domain Enhancement**: Added remote URL support with CDN and multiple image sizes
-- **ApiClient Enhancement**: Added `fetchUploadedMedia()` method for `/micropub/media?q=source` endpoint
-- **UploadManager Transformation**: Changed from local file scanning to remote API integration with 5-minute caching
-- **TreeProvider Enhancement**: Shows "📁 Remote Uploads (count)" section with fallback to local uploads
-- **Loading States**: Visual feedback during API calls with error handling and retry options
-- **ATDD Implementation**: Following test-driven development with 119 passing tests
-- **Performance Optimization**: Cached API responses reduce repeated network calls
-
-### ✅ **PAGES FEATURE COMPLETED**
-The extension now displays user's published pages from micro.blog in the tree view.
-
-### **Pages Feature Implementation (v0.3.20250711)**
-- **Page Domain Entity**: New Page.ts entity with validation, formatting, and metadata support
-- **API Integration**: Added `fetchPages()` method using proper `mp-channel=pages` parameter
-- **Separate API Endpoints**: Clean separation between posts and pages API calls
-- **Tree View Integration**: Shows "📄 Pages (count)" section with individual page items
-- **Content Viewing**: Click to view page content using existing ContentProvider
-- **Sorting & Display**: Pages sorted by publish date with proper titles and metadata
-- **Testing Coverage**: 114 passing tests including dedicated pages API tests
-- **Clean Architecture**: No heuristics - uses proper micro.blog pages API endpoint
-- **Error Handling**: Graceful fallback to error state when pages API fails
-- **Always Visible**: Pages section always shown regardless of count (like uploads fix)
-
-### ✅ **UPLOADS DISPLAY FIX**
-Fixed issue where uploads section would not appear when empty.
-
-### **Uploads Display Enhancement (v0.3.20250711)**
-- **Fixed TreeProvider Logic**: Always show uploads section regardless of count
-- **Clear User Feedback**: Shows "📁 Remote Uploads (0)" instead of hiding section
-- **Consistent Behavior**: Remote and local uploads always visible with proper counts
-- **Improved UX**: Users now understand when no uploads exist vs. loading issues
-
-### **Image Upload Features**
-- **Media Upload Command**: `microblog.uploadImage` command with file dialog integration
-- **File Validation**: JPEG/PNG/GIF support up to 10MB with clear error messages
-- **Context Menu**: Right-click upload for image files in Explorer
-- **Progress Feedback**: VS Code progress indicators during upload
-- **Retry Logic**: Automatic retry (max 3 attempts) with exponential backoff
-- **URL Handling**: Copy URL or markdown format to clipboard
-- **API Integration**: Full Micropub media endpoint protocol compliance
-- **Comprehensive Testing**: 26 new tests covering all upload scenarios
-
-
-### 🚀 **Next Phase: Advanced Features**
-Future development will include draft synchronization, multi-blog support, and enhanced media management capabilities.
+## 🚀 **Planned Features**
+Future development will include:
+- Image upload functionality
+- Draft synchronization between local and remote
+- Multi-blog support
+- Enhanced media management capabilities
+- Search functionality
+- Post templates
 
 ---
 
@@ -354,7 +306,7 @@ The regression test suite in `/test/regression/` is **PROTECTED** and should **N
    - Follow existing test patterns and structure
    - Ensure new tests validate the completed feature
 
-### **Test Strategy Clarification**
+### **Test Strategy**
 
 This project uses a **two-tier testing approach**:
 
@@ -379,7 +331,7 @@ This project uses a **two-tier testing approach**:
 - **When to use**: For complex business logic that needs isolated testing
 - **Location**: Can be added to `/test/suite/` if needed
 
-#### **Files That Are PROTECTED**
+#### **Protected Files**
 
 - `/test/regression/regression.test.ts` - Main regression test suite
 - `/test/regression/helpers/` - All regression test helper files
@@ -393,7 +345,7 @@ This project uses a **two-tier testing approach**:
 
 ---
 
-## 🛡️ **DEVELOPMENT PROTOCOLS** (Mandatory for Phase 2+)
+## 🛡️ **DEVELOPMENT PROTOCOLS** (Mandatory)
 
 ### **Quality Gates (Non-Negotiable)**
 

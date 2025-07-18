@@ -110,9 +110,9 @@ status:
     @echo "{{blue}}📝 Recent commits:{{reset}}"
     @git log --oneline -5
 
-# Help for Phase 2 development
-phase2-help:
-    @echo "{{blue}}📚 Phase 2 Development Commands:{{reset}}"
+# Development help
+help-dev:
+    @echo "{{blue}}📚 Development Commands:{{reset}}"
     @echo ""
     @echo "  {{green}}just dev{{reset}}        - Open test blog with extension"
     @echo "  {{green}}just test{{reset}}       - Run all tests" 
@@ -120,4 +120,4 @@ phase2-help:
     @echo "  {{green}}just watch{{reset}}      - Watch mode for development"
     @echo "  {{green}}just package{{reset}}    - Create VSIX for distribution"
     @echo ""
-    @echo "{{yellow}}Current focus: Local content creation & draft editing{{reset}}"
+    @echo "{{yellow}}Alpha version - active development{{reset}}"

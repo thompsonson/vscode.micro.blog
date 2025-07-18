@@ -1,24 +1,26 @@
 # Micro.blog VS Code Extension
 
-> ✅ **Phase 1 Complete** | ✅ **Phase 2 Complete** | ✅ **Phase 3 Complete** - Now with pages and remote uploads display!
+> 🚧 **Alpha Release** - Currently in active development
 
 A VS Code extension for micro.blog integration that lets you browse remote content and create/edit posts locally in VS Code, built with Domain Driven Design principles.
 
 ## 🚀 Features
 
-### ✅ **Completed**
+### Core Features
 
-#### **Phase 1 (v0.1.0) - Read-Only Browsing**
+#### **Authentication & Configuration**
 - **🔧 Simple Configuration**: One-click setup with app token only
 - **🔐 Secure Authentication**: Uses VS Code SecretStorage + proper token verification
 - **📱 Connection Testing**: Verify credentials and view account info
+- **🛡️ Error Handling**: Clear error messages for common issues
+
+#### **Content Browsing & Viewing**
 - **📁 Content Browsing**: Tree view with posts organized by Published/Drafts  
 - **👀 Content Viewing**: Click posts to view formatted content in editor
+- **📄 Pages Display**: Browse and view published pages from your micro.blog
 - **🔄 Refresh**: Update content with latest posts
-- **🛡️ Error Handling**: Clear error messages for common issues
-- **🧪 Comprehensive Testing**: 18 passing tests with API mocking
 
-#### **Phase 2 Week 1 (v0.1.20250711) - Local Content Creation**
+#### **Local Content Creation**
 - **📝 New Post Creation**: Create local blog posts with "New Post" command
 - **📂 Workspace Integration**: Automatic `.microblog/` and `content/` folder setup
 - **📋 Enhanced Tree View**: Shows "📝 Local Drafts" alongside remote content
@@ -26,24 +28,19 @@ A VS Code extension for micro.blog integration that lets you browse remote conte
 - **✍️ Markdown Support**: Full frontmatter support with title, status, type metadata
 - **🎯 Click-to-Edit**: Click local posts to open in VS Code editor
 
-#### **Phase 2 Week 2 (v0.2.20250711) - Publishing**
+#### **Publishing**
 - **📤 One-Click Publishing**: Right-click local posts → "Publish to Micro.blog"
 - **✅ Content Validation**: Pre-publish validation with clear error messages
 - **🔄 Progress Feedback**: VS Code progress notifications during publishing
 - **🌐 Micropub Protocol**: Full support for micro.blog's publishing API
 - **🎯 Context Menu Integration**: Native VS Code right-click workflow
-- **🛡️ Error Handling**: Comprehensive error recovery and user feedback
 
-#### **Phase 3 (v0.3.20250711) - Pages & Remote Uploads Display**
-- **📄 Pages Tree View**: Shows "📄 Pages (count)" with user's published pages
-- **🔗 Page Navigation**: Click pages to view content in editor preview
-- **🌐 Pages API**: Uses dedicated `mp-channel=pages` endpoint for accurate data
-- **📁 Uploads Tree View**: Shows "📁 Remote Uploads (count)" in tree view
+#### **Media Management**
+- **📁 Remote Uploads Display**: View all your uploaded media files in the tree
 - **🌐 API Integration**: Fetches uploads from `/micropub/media?q=source` endpoint
 - **📸 Rich Metadata**: Displays upload date, file type icons, and alt text
 - **📋 Format Copying**: Right-click → Copy as Markdown/HTML with remote URLs
 - **⚡ Performance**: 5-minute caching to reduce API calls
-- **🔄 Fallback Support**: Gracefully falls back to local uploads on API failure
 
 ## 📦 Installation & Setup
 
@@ -80,13 +77,13 @@ A VS Code extension for micro.blog integration that lets you browse remote conte
 - **Edit Locally**: Click any post in "📝 Local Drafts" to edit in VS Code
 - **Auto-Save**: Changes are automatically saved to your workspace
 
-### **Publishing to Micro.blog** ✨ **New!**
+### **Publishing to Micro.blog**
 - **Publish**: Right-click any local post → select "Publish to Micro.blog"
 - **Progress**: Watch publishing progress in VS Code notifications
 - **Success**: Get confirmation with optional URL to published post
 - **Error Handling**: Clear error messages for validation failures or API issues
 
-### **Viewing Pages** ✨ **New!**
+### **Viewing Pages**
 - **Browse Pages**: Expand "📄 Pages" in the tree view to see all published pages
 - **View Content**: Click any page to open it in the editor preview
 - **Sorted Display**: Pages appear sorted by publish date (newest first)
@@ -120,9 +117,9 @@ src/
 │   ├── PublishingService.ts # Publishing workflow orchestration
 │   ├── UploadManager.ts     # Remote uploads API with caching
 │   └── FileManager.ts       # Local content management
-└── providers/               # VS Code integration ✅
-    ├── TreeProvider.ts      # Content tree view ✅
-    └── ContentProvider.ts   # Read-only content viewer ✅
+└── providers/               # VS Code integration
+    ├── TreeProvider.ts      # Content tree view
+    └── ContentProvider.ts   # Read-only content viewer
 ```
 
 ## 🧪 Testing
@@ -133,6 +130,12 @@ src/
 
 ## 🛠️ Development
 
+### Quick Start
+- `just dev` - Launch VS Code with extension in development mode
+- `just check` - Run all quality checks (build, test, lint)
+- `just watch` - Watch for changes and recompile
+
+### Commands
 - `npm run compile` - Compile TypeScript
 - `npm run watch` - Watch for changes and recompile  
 - `npm run lint` - ESLint validation
@@ -148,18 +151,21 @@ src/
 
 ## 🗺️ Roadmap
 
-### ✅ **Phase 1: Read-Only Browsing** (Complete)
+### ✅ **Implemented Features**
 - Browse and view existing micro.blog content
+- Create and edit local posts
+- Publish posts to micro.blog
+- View pages and remote uploads
+- Basic media management
 
-### ✅ **Phase 2: Local Content Creation & Publishing** (Complete)
-- ✅ **Week 1**: Local post creation
-- ✅ **Week 2**: Publishing capability
-
-### 🚧 **Phase 3: Advanced Features** (In Progress)
-- ✅ Remote uploads display (Complete)
-- 📋 Draft synchronization (Planned)
-- 📋 Multi-blog support (Planned)
-- 📋 Enhanced media management (Planned)
+### 📋 **Planned Features**
+- Image upload functionality
+- Draft synchronization between local and remote
+- Multi-blog support
+- Enhanced media management (bulk operations, organization)
+- Advanced publishing options (scheduled posts, categories)
+- Search functionality
+- Post templates
 
 ## API References
 
