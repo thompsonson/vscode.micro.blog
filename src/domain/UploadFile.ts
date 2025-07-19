@@ -151,6 +151,20 @@ export class UploadFile {
 	}
 
 	/**
+	 * Check if this is a text file that can be previewed
+	 */
+	isTextFile(): boolean {
+		return /^text\/(plain|markdown|json|xml|csv|yaml)$|^application\/(json|xml|yaml)$/i.test(this.mimeType);
+	}
+
+	/**
+	 * Get optimal viewing URL for this file (alias for specification compliance)
+	 */
+	getOptimalViewingUrl(size?: 'large' | 'medium' | 'small', preferCdn: boolean = false): string {
+		return this.getOptimalUrl(size, preferCdn);
+	}
+
+	/**
 	 * Get appropriate icon name for this file type
 	 */
 	get iconName(): string {

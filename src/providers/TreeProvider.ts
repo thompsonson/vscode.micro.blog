@@ -52,7 +52,11 @@ export class MicroblogTreeItem extends vscode.TreeItem {
 			this.description = uploadFile.formattedSize;
 			this.iconPath = new vscode.ThemeIcon(uploadFile.iconName);
 			this.contextValue = 'uploadFile'; // Enable context menu for upload files
-			// No command - uploads don't open, they provide context menu actions
+			this.command = {
+				command: 'microblog.viewUpload',
+				title: 'View Upload',
+				arguments: [uploadFile]
+			};
 		} else {
 			this.iconPath = new vscode.ThemeIcon('folder');
 		}

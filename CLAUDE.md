@@ -4,16 +4,18 @@
 
 This is a VS Code extension for micro.blog integration built using **Domain Driven Design (DDD)** principles. Currently in **alpha development** with core features for content browsing, creation, and publishing.
 
-### Current Features (v0.3.20250711 - Alpha)
+### Current Features (v0.4.20250719 - Alpha)
 - **Authentication & Configuration**: Simple token-based setup with auto-domain discovery
 - **Content Browsing**: Read-only viewing of posts, drafts, and pages
 - **Local Content Creation**: New Post command with workspace integration
 - **Publishing**: Publish local drafts to micro.blog via Micropub API
-- **Media Display**: View uploaded media files in tree view
+- **Media Display**: View uploaded media files in tree view with click-to-view functionality
+- **Upload Viewing**: Click uploads to view images, metadata, and text file previews in webview panels
+- **Text Preview**: Preview content of text files (JSON, TXT, XML, etc.) with copy-to-clipboard functionality
 - **Enhanced Tree View**: Shows local drafts, pages, posts, and remote uploads
 - **File Management**: Automatic workspace structure and file operations
 - **Real-time Updates**: File watcher provides instant tree view updates
-- **Quality Maintained**: 114 passing tests with comprehensive coverage
+- **Quality Maintained**: 128 passing tests with comprehensive coverage
 - **Development Tools**: Justfile for streamlined development workflow
 - **API Integration**: Full Micropub protocol support for posts, pages, and media
 
@@ -38,6 +40,7 @@ src/
 │   ├── MediaService.ts      # Image upload orchestration ✅
 │   ├── PublishingService.ts # Local post publishing ✅
 │   ├── UploadManager.ts     # Remote uploads API integration with caching & fallback ✅
+│   ├── ContentViewerService.ts # Upload content viewing in webview panels ✅
 │   └── FileManager.ts       # Workspace and file operations ✅
 ├── providers/               # VS Code integration ✅
 │   ├── TreeProvider.ts      # Content tree view (local + remote uploads) ✅
@@ -254,6 +257,15 @@ Cmd+Shift+P         # Command palette to test extension commands
 - Enhanced tree view with all content types
 - Caching for performance optimization
 - Context menus for format copying
+
+### **Upload Content Viewing (v0.4.20250719)**
+- ContentViewerService for upload content display in webview panels
+- Click-to-view functionality for all upload types
+- Image viewer with metadata, actions, and error handling
+- Text file preview with content streaming and size limits
+- Support for TXT, JSON, XML, CSV, YAML file preview
+- Copy-to-clipboard functionality for text content
+- Panel reuse pattern for better UX
 
 ### **Recent Fixes**
 - Fixed tree view to always show uploads section even when empty

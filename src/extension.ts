@@ -5,12 +5,14 @@ import { MicroblogService } from './services/MicroblogService';
 import { FileManager } from './services/FileManager';
 import { PublishingService } from './services/PublishingService';
 import { MediaService } from './services/MediaService';
+import { ContentViewerService } from './services/ContentViewerService';
 import { MicroblogTreeProvider, MicroblogTreeItem } from './providers/TreeProvider';
 import { ContentProvider } from './providers/ContentProvider';
 import { LocalPost } from './domain/LocalPost';
 import { MediaAsset } from './domain/MediaAsset';
 import { Post } from './domain/Post';
 import { Page } from './domain/Page';
+import { UploadFile } from './domain/UploadFile';
 
 export function activate(context: vscode.ExtensionContext) {
 	console.log('[Micro.blog] Extension activated');
@@ -30,6 +32,7 @@ export function activate(context: vscode.ExtensionContext) {
 		// Initialize providers
 		const treeProvider = new MicroblogTreeProvider(microblogService, fileManager);
 		const contentProvider = new ContentProvider();
+		const contentViewerService = new ContentViewerService(context);
 		
 		// Verify credentials and set context for UI if already configured
 		(async () => {
@@ -463,6 +466,22 @@ export function activate(context: vscode.ExtensionContext) {
 				vscode.window.showErrorMessage(`Failed to copy HTML format: ${error}`);
 			}
 		});
+
+		// View upload command (triggered by tree item clicks)
+		const viewUploadCommand = vscode.commands.registerCommand('microblog.viewUpload', async (uploadFile: UploadFile) => {
+			try {
+				if (!uploadFile) {
+					vscode.window.showErrorMessage('No upload file provided.');
+					return;
+				}
+
+				await contentViewerService.displayUpload(uploadFile);
+
+			} catch (error) {
+				console.error('[Micro.blog] View upload failed:', error);
+				vscode.window.showErrorMessage(`Failed to view upload: ${error}`);
+			}
+		});
 		
 		// Register commands and providers
 		context.subscriptions.push(
@@ -476,6 +495,7 @@ export function activate(context: vscode.ExtensionContext) {
 			publishPostCommand,
 			copyAsMarkdownCommand,
 			copyAsHtmlCommand,
+			viewUploadCommand,
 			treeView,
 			contentProviderDisposable
 		);

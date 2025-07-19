@@ -355,6 +355,50 @@ This is parsed content.`;
 			assert.strictEqual(uploadFile.toHtml('Custom Alt'), '<img src="uploads/photo.jpg" alt="Custom Alt">');
 		});
 
+		test('UploadFile text file detection and viewing URL', () => {
+			// Test text file detection
+			const textFile = new UploadFile({
+				filePath: 'uploads/notes.txt',
+				fileName: 'notes.txt',
+				fileSize: 512,
+				mimeType: 'text/plain',
+				lastModified: new Date(),
+				remoteUrl: 'https://example.com/notes.txt'
+			});
+			
+			assert.strictEqual(textFile.isTextFile(), true);
+			assert.strictEqual(textFile.isImageFile(), false);
+			
+			// Test JSON file detection
+			const jsonFile = new UploadFile({
+				filePath: 'uploads/data.json',
+				fileName: 'data.json',
+				fileSize: 256,
+				mimeType: 'application/json',
+				lastModified: new Date(),
+				remoteUrl: 'https://example.com/data.json'
+			});
+			
+			assert.strictEqual(jsonFile.isTextFile(), true);
+			assert.strictEqual(jsonFile.isImageFile(), false);
+			
+			// Test non-text file
+			const pdfFile = new UploadFile({
+				filePath: 'uploads/document.pdf',
+				fileName: 'document.pdf',
+				fileSize: 2048,
+				mimeType: 'application/pdf',
+				lastModified: new Date()
+			});
+			
+			assert.strictEqual(pdfFile.isTextFile(), false);
+			assert.strictEqual(pdfFile.isImageFile(), false);
+			
+			// Test getOptimalViewingUrl method
+			assert.strictEqual(textFile.getOptimalViewingUrl(), 'https://example.com/notes.txt');
+			assert.strictEqual(textFile.getOptimalViewingUrl('large'), 'https://example.com/notes.txt');
+		});
+
 		test('UploadFile validation errors', () => {
 			// Should throw for missing file path
 			assert.throws(() => {

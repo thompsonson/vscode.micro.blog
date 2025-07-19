@@ -35,8 +35,11 @@ A VS Code extension for micro.blog integration that lets you browse remote conte
 - **🌐 Micropub Protocol**: Full support for micro.blog's publishing API
 - **🎯 Context Menu Integration**: Native VS Code right-click workflow
 
-#### **Media Management**
+#### **Media Management & Upload Viewing**
 - **📁 Remote Uploads Display**: View all your uploaded media files in the tree
+- **👀 Click-to-View**: Click any upload to view content in dedicated webview panel
+- **🖼️ Image Viewer**: Rich image display with metadata, actions, and error handling
+- **📝 Text Preview**: Preview content of text files (JSON, TXT, XML, CSV, YAML) with copy functionality
 - **🌐 API Integration**: Fetches uploads from `/micropub/media?q=source` endpoint
 - **📸 Rich Metadata**: Displays upload date, file type icons, and alt text
 - **📋 Format Copying**: Right-click → Copy as Markdown/HTML with remote URLs
@@ -91,6 +94,10 @@ A VS Code extension for micro.blog integration that lets you browse remote conte
 
 ### **Viewing Uploads**
 - **Browse Uploads**: Expand "📁 Remote Uploads" in the tree view
+- **Click to View**: Click any upload to open it in a webview panel
+  - **Images**: Full image display with metadata and action buttons
+  - **Text Files**: Content preview with copy-to-clipboard functionality
+  - **Other Files**: Metadata panel with file information
 - **Copy Formats**: Right-click any upload → "Copy as Markdown" or "Copy as HTML"
 - **Rich Information**: See upload date, file type, and available image sizes
 - **Auto-Refresh**: Uploads cache refreshes every 5 minutes
@@ -116,6 +123,7 @@ src/
 │   ├── ApiClient.ts         # Micropub HTTP client with publishing
 │   ├── PublishingService.ts # Publishing workflow orchestration
 │   ├── UploadManager.ts     # Remote uploads API with caching
+│   ├── ContentViewerService.ts # Upload content viewing in webview panels
 │   └── FileManager.ts       # Local content management
 └── providers/               # VS Code integration
     ├── TreeProvider.ts      # Content tree view
