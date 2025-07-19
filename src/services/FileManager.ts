@@ -26,6 +26,9 @@ export class FileManager {
 			// Create content directory
 			await vscode.workspace.fs.createDirectory(contentDir);
 
+			// Create drafts and published folders
+			await this.createDraftsAndPublishedFolders();
+
 			// Create config file if it doesn't exist
 			const configFile = vscode.Uri.file(path.join(this.workspacePath, '.microblog', 'config.json'));
 			try {
@@ -41,6 +44,9 @@ export class FileManager {
 					Buffer.from(JSON.stringify(defaultConfig, null, 2))
 				);
 			}
+
+			// Migrate existing flat content structure if needed
+			await this.migrateFlatContentToDrafts();
 		} catch (error) {
 			// Directories might already exist - that's okay
 			console.log('[Micro.blog] Workspace structure already exists or creation failed:', error);
@@ -91,9 +97,72 @@ export class FileManager {
 	}
 
 	/**
-	 * Get all local post files
+	 * Read a local post file from a specific path
+	 */
+	public async readLocalPostFromPath(relativePath: string): Promise<LocalPost> {
+		const filePath = path.join(this.workspacePath, relativePath);
+		const fileUri = vscode.Uri.file(filePath);
+		
+		const fileContent = await vscode.workspace.fs.readFile(fileUri);
+		const markdown = Buffer.from(fileContent).toString('utf8');
+		
+		return LocalPost.fromMarkdown(markdown, relativePath);
+	}
+
+	/**
+	 * Get all local post files from both drafts and published folders
 	 */
 	public async getLocalPosts(): Promise<LocalPost[]> {
+		const posts: LocalPost[] = [];
+		
+		// Get posts from drafts folder
+		const drafts = await this.getLocalPostsFromFolder('drafts');
+		posts.push(...drafts);
+		
+		// Get posts from published folder
+		const published = await this.getLocalPostsFromFolder('published');
+		posts.push(...published);
+		
+		// Also get posts from flat content structure (for migration)
+		const flatPosts = await this.getFlatContentPosts();
+		posts.push(...flatPosts);
+		
+		return posts;
+	}
+
+	/**
+	 * Get local posts from a specific folder (drafts or published)
+	 */
+	public async getLocalPostsFromFolder(location: 'drafts' | 'published'): Promise<LocalPost[]> {
+		const folderDir = vscode.Uri.file(path.join(this.workspacePath, 'content', location));
+		
+		try {
+			const files = await vscode.workspace.fs.readDirectory(folderDir);
+			const posts: LocalPost[] = [];
+
+			for (const [fileName, fileType] of files) {
+				if (fileType === vscode.FileType.File && fileName.endsWith('.md')) {
+					try {
+						const filePath = path.join('content', location, fileName);
+						const post = await this.readLocalPostFromPath(filePath);
+						posts.push(post);
+					} catch (error) {
+						console.error(`[Micro.blog] Failed to read local post ${fileName} from ${location}:`, error);
+					}
+				}
+			}
+
+			return posts;
+		} catch (error) {
+			// Folder doesn't exist yet
+			return [];
+		}
+	}
+
+	/**
+	 * Get posts from flat content structure (for backwards compatibility)
+	 */
+	private async getFlatContentPosts(): Promise<LocalPost[]> {
 		const contentDir = vscode.Uri.file(path.join(this.workspacePath, 'content'));
 		
 		try {
@@ -106,7 +175,7 @@ export class FileManager {
 						const post = await this.readLocalPost(fileName);
 						posts.push(post);
 					} catch (error) {
-						console.error(`[Micro.blog] Failed to read local post ${fileName}:`, error);
+						console.error(`[Micro.blog] Failed to read flat content post ${fileName}:`, error);
 					}
 				}
 			}
@@ -135,12 +204,12 @@ export class FileManager {
 	}
 
 	/**
-	 * Watch for changes to local content
+	 * Watch for changes to local content (drafts and published folders)
 	 */
 	public watchLocalChanges(): vscode.FileSystemWatcher {
 		const pattern = new vscode.RelativePattern(
 			vscode.workspace.workspaceFolders![0],
-			'content/*.md'
+			'content/**/*.md'
 		);
 		
 		return vscode.workspace.createFileSystemWatcher(pattern);
@@ -207,5 +276,139 @@ export class FileManager {
 			// Directory might already exist - that's okay
 			console.log('[Micro.blog] Uploads directory already exists or creation failed:', error);
 		}
+	}
+
+	/**
+	 * Create drafts and published folders
+	 */
+	public async createDraftsAndPublishedFolders(): Promise<void> {
+		const draftsDir = vscode.Uri.file(path.join(this.workspacePath, 'content', 'drafts'));
+		const publishedDir = vscode.Uri.file(path.join(this.workspacePath, 'content', 'published'));
+
+		try {
+			await vscode.workspace.fs.createDirectory(draftsDir);
+		} catch (error) {
+			// Directory might already exist - that's okay
+			console.log('[Micro.blog] Drafts directory already exists or creation failed:', error);
+		}
+
+		try {
+			await vscode.workspace.fs.createDirectory(publishedDir);
+		} catch (error) {
+			// Directory might already exist - that's okay
+			console.log('[Micro.blog] Published directory already exists or creation failed:', error);
+		}
+	}
+
+	/**
+	 * Move a local post from drafts to published folder
+	 */
+	public async moveToPublished(localPost: LocalPost): Promise<void> {
+		const publishedPost = localPost.createPublishedVersion();
+		const oldFilePath = path.join(this.workspacePath, localPost.filePath);
+		const newFilePath = path.join(this.workspacePath, publishedPost.filePath);
+		
+		// Ensure published directory exists
+		await this.createDraftsAndPublishedFolders();
+
+		try {
+			// Handle name conflicts by auto-renaming
+			const resolvedNewPath = await this.resolveFileConflict(newFilePath);
+			
+			// Read the content and update it with new location
+			const fileContent = await vscode.workspace.fs.readFile(vscode.Uri.file(oldFilePath));
+			const markdown = Buffer.from(fileContent).toString('utf8');
+			const updatedPost = LocalPost.fromMarkdown(markdown, publishedPost.filePath);
+			const updatedContent = updatedPost.toMarkdown();
+
+			// Write to new location
+			await vscode.workspace.fs.writeFile(
+				vscode.Uri.file(resolvedNewPath), 
+				Buffer.from(updatedContent)
+			);
+			
+			// Delete old file
+			await vscode.workspace.fs.delete(vscode.Uri.file(oldFilePath));
+
+			console.log(`[Micro.blog] Moved post from ${localPost.filePath} to published folder`);
+		} catch (error) {
+			console.error('[Micro.blog] Failed to move post to published folder:', error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Migrate existing flat content structure to drafts folder
+	 */
+	public async migrateFlatContentToDrafts(): Promise<void> {
+		const contentDir = vscode.Uri.file(path.join(this.workspacePath, 'content'));
+		const draftsDir = vscode.Uri.file(path.join(this.workspacePath, 'content', 'drafts'));
+
+		try {
+			const files = await vscode.workspace.fs.readDirectory(contentDir);
+			let migratedCount = 0;
+
+			for (const [fileName, fileType] of files) {
+				// Only migrate .md files that are not in subdirectories
+				if (fileType === vscode.FileType.File && fileName.endsWith('.md')) {
+					const oldFilePath = path.join(this.workspacePath, 'content', fileName);
+					const newFilePath = path.join(this.workspacePath, 'content', 'drafts', fileName);
+
+					try {
+						// Ensure drafts directory exists
+						await vscode.workspace.fs.createDirectory(draftsDir);
+
+						// Read content and update location in frontmatter
+						const fileContent = await vscode.workspace.fs.readFile(vscode.Uri.file(oldFilePath));
+						const markdown = Buffer.from(fileContent).toString('utf8');
+						const post = LocalPost.fromMarkdown(markdown, `content/drafts/${fileName}`);
+						const updatedContent = post.toMarkdown();
+
+						// Write to drafts folder
+						await vscode.workspace.fs.writeFile(
+							vscode.Uri.file(newFilePath), 
+							Buffer.from(updatedContent)
+						);
+						
+						// Delete old file
+						await vscode.workspace.fs.delete(vscode.Uri.file(oldFilePath));
+						migratedCount++;
+					} catch (error) {
+						console.error(`[Micro.blog] Failed to migrate ${fileName}:`, error);
+					}
+				}
+			}
+
+			if (migratedCount > 0) {
+				console.log(`[Micro.blog] Migrated ${migratedCount} posts to drafts folder`);
+				vscode.window.showInformationMessage(`Migrated ${migratedCount} existing posts to drafts folder`);
+			}
+		} catch (error) {
+			console.error('[Micro.blog] Migration failed:', error);
+		}
+	}
+
+	/**
+	 * Resolve file name conflicts by adding timestamp
+	 */
+	private async resolveFileConflict(filePath: string): Promise<string> {
+		let resolvedPath = filePath;
+		let counter = 1;
+
+		while (await this.fileExists(path.relative(this.workspacePath, resolvedPath))) {
+			const dir = path.dirname(filePath);
+			const ext = path.extname(filePath);
+			const basename = path.basename(filePath, ext);
+			const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+			resolvedPath = path.join(dir, `${basename}-${timestamp}${ext}`);
+			counter++;
+			
+			// Prevent infinite loop
+			if (counter > 10) {
+				break;
+			}
+		}
+
+		return resolvedPath;
 	}
 }

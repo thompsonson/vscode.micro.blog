@@ -96,7 +96,7 @@ suite('Extension Test Suite', () => {
 			assert.strictEqual(post.content, 'This is test content');
 			assert.strictEqual(post.status, 'draft');
 			assert.strictEqual(post.type, 'post');
-			assert.strictEqual(post.filePath, 'content/my-test-post.md');
+			assert.strictEqual(post.filePath, 'content/drafts/my-test-post.md');
 
 			const markdown = post.toMarkdown();
 			assert.ok(markdown.includes('title: "My Test Post"'));

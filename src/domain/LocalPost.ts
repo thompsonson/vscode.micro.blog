@@ -3,6 +3,7 @@ export class LocalPost {
 	public readonly content: string;
 	public readonly status: 'draft' | 'published';
 	public readonly type: 'post' | 'page';
+	public readonly location: 'drafts' | 'published';
 	public readonly postId?: string;
 	public readonly lastSync?: Date;
 	public readonly filePath: string;
@@ -12,6 +13,7 @@ export class LocalPost {
 		content: string;
 		status?: 'draft' | 'published';
 		type?: 'post' | 'page';
+		location?: 'drafts' | 'published';
 		postId?: string;
 		lastSync?: Date;
 		filePath: string;
@@ -20,6 +22,7 @@ export class LocalPost {
 		this.content = options.content;
 		this.status = options.status || 'draft';
 		this.type = options.type || 'post';
+		this.location = options.location || 'drafts';
 		this.postId = options.postId;
 		this.lastSync = options.lastSync;
 		this.filePath = options.filePath;
@@ -33,7 +36,8 @@ export class LocalPost {
 			'---',
 			`title: "${this.title}"`,
 			`status: "${this.status}"`,
-			`type: "${this.type}"`
+			`type: "${this.type}"`,
+			`location: "${this.location}"`
 		];
 
 		if (this.postId) {
@@ -95,6 +99,7 @@ export class LocalPost {
 			content: content,
 			status: frontmatter.status === 'published' ? 'published' : 'draft',
 			type: frontmatter.type === 'page' ? 'page' : 'post',
+			location: frontmatter.location === 'published' ? 'published' : 'drafts',
 			postId: frontmatter.postId || undefined,
 			lastSync: frontmatter.lastSync ? new Date(frontmatter.lastSync) : undefined,
 			filePath: filePath
@@ -147,16 +152,36 @@ export class LocalPost {
 	/**
 	 * Create a new local post with defaults
 	 */
-	public static create(title: string, content: string = ''): LocalPost {
+	public static create(title: string, content: string = '', location: 'drafts' | 'published' = 'drafts'): LocalPost {
 		const slug = LocalPost.generateSlug(title);
-		const filePath = `content/${slug}.md`;
+		const filePath = `content/${location}/${slug}.md`;
 		
 		return new LocalPost({
 			title,
 			content,
 			filePath,
 			status: 'draft',
-			type: 'post'
+			type: 'post',
+			location
+		});
+	}
+
+	/**
+	 * Create a new post with a path to be moved to published folder
+	 */
+	public createPublishedVersion(): LocalPost {
+		const slug = LocalPost.generateSlug(this.title);
+		const publishedFilePath = `content/published/${slug}.md`;
+		
+		return new LocalPost({
+			title: this.title,
+			content: this.content,
+			status: 'published',
+			type: this.type,
+			location: 'published',
+			postId: this.postId,
+			lastSync: new Date(),
+			filePath: publishedFilePath
 		});
 	}
 }

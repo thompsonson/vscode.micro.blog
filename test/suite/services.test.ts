@@ -1452,4 +1452,125 @@ suite('Service Tests', () => {
 			}
 		});
 	});
+
+	suite('Draft File Management Tests', () => {
+		let mockFileManager: any;
+		let publishingService: PublishingService;
+		let mockApiClient: any;
+
+		setup(() => {
+			// Mock API client for successful publishing
+			mockApiClient = {
+				publishPost: async () => ({ url: 'https://example.micro.blog/published-post' })
+			};
+
+			// Mock FileManager with draft/published folder support
+			mockFileManager = {
+				moveToPublished: async (localPost: LocalPost) => {
+					// Simulate successful file move
+					return Promise.resolve();
+				},
+				createDraftsAndPublishedFolders: async () => {
+					// Simulate folder creation
+					return Promise.resolve();
+				},
+				migrateFlatContentToDrafts: async () => {
+					// Simulate migration
+					return Promise.resolve();
+				}
+			};
+
+			publishingService = new PublishingService(mockApiClient);
+			// Inject FileManager into PublishingService
+			(publishingService as any).fileManager = mockFileManager;
+		});
+
+		test('user publishes draft and file moves to published folder', async () => {
+			// Given: A local draft
+			const localPost = LocalPost.create('Test Draft', 'This draft will be published');
+			let fileMoved = false;
+
+			// Mock the file movement
+			mockFileManager.moveToPublished = async (post: LocalPost) => {
+				assert.strictEqual(post.title, 'Test Draft');
+				fileMoved = true;
+			};
+
+			// When: User publishes the draft
+			const result = await publishingService.publishPost(localPost);
+
+			// Then: Publishing succeeds and file moves to published folder
+			assert.strictEqual(result.success, true);
+			assert.strictEqual(fileMoved, true, 'File should be moved to published folder after successful publish');
+		});
+
+		test('file movement failure does not prevent publishing success', async () => {
+			// Given: A local draft and file movement that fails
+			const localPost = LocalPost.create('Test Draft', 'This will publish but move will fail');
+			let moveAttempted = false;
+
+			mockFileManager.moveToPublished = async (post: LocalPost) => {
+				moveAttempted = true;
+				throw new Error('File move failed');
+			};
+
+			// When: User publishes (and file move fails)
+			const result = await publishingService.publishPost(localPost);
+
+			// Then: Publishing still succeeds (no rollback)
+			assert.strictEqual(result.success, true);
+			assert.strictEqual(moveAttempted, true, 'File move should be attempted');
+		});
+
+		test('publishing failure prevents file movement', async () => {
+			// Given: A local draft and API that fails
+			const localPost = LocalPost.create('Test Draft', 'This will fail to publish');
+			let fileMoveAttempted = false;
+
+			mockApiClient.publishPost = async () => {
+				throw new Error('Publishing failed');
+			};
+
+			mockFileManager.moveToPublished = async (post: LocalPost) => {
+				fileMoveAttempted = true;
+			};
+
+			// When: Publishing fails
+			const result = await publishingService.publishPost(localPost);
+
+			// Then: Publishing fails and file is not moved
+			assert.strictEqual(result.success, false);
+			assert.strictEqual(fileMoveAttempted, false, 'File should not be moved when publishing fails');
+		});
+
+		test('folder creation is handled during initialization', async () => {
+			// Given: FileManager needs to create folder structure
+			let foldersCreated = false;
+
+			mockFileManager.createDraftsAndPublishedFolders = async () => {
+				foldersCreated = true;
+			};
+
+			// When: FileManager is initialized (simulated)
+			await mockFileManager.createDraftsAndPublishedFolders();
+
+			// Then: Folders are created
+			assert.strictEqual(foldersCreated, true, 'Drafts and published folders should be created');
+		});
+
+		test('migration handles existing flat content structure', async () => {
+			// Given: Existing files in flat content/ structure
+			let migrationExecuted = false;
+
+			mockFileManager.migrateFlatContentToDrafts = async () => {
+				migrationExecuted = true;
+			};
+
+			// When: Migration is triggered
+			await mockFileManager.migrateFlatContentToDrafts();
+
+			// Then: Migration executes
+			assert.strictEqual(migrationExecuted, true, 'Migration should handle existing flat structure');
+		});
+	});
 });

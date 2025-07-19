@@ -152,6 +152,8 @@ export class MicroblogTreeProvider implements vscode.TreeDataProvider<MicroblogT
 	private posts: Post[] = [];
 	private pages: Page[] = [];
 	private localPosts: LocalPost[] = [];
+	private localDrafts: LocalPost[] = [];
+	private localPublished: LocalPost[] = [];
 	private uploadFiles: UploadFile[] = [];
 	private uploadManager?: UploadManager;
 	private apiClient?: ApiClient;
@@ -224,13 +226,29 @@ export class MicroblogTreeProvider implements vscode.TreeDataProvider<MicroblogT
 			// Load local posts if FileManager is available
 			if (this.fileManager) {
 				try {
+					// Load drafts and published posts separately
+					this.localDrafts = await this.fileManager.getLocalPostsFromFolder('drafts');
+					this.localPublished = await this.fileManager.getLocalPostsFromFolder('published');
+					
+					// Also get any posts from flat structure (for migration)
 					this.localPosts = await this.fileManager.getLocalPosts();
-					if (this.localPosts.length > 0) {
-						categories.push(new MicroblogTreeItem(
-							`📝 Local Drafts (${this.localPosts.length})`,
-							vscode.TreeItemCollapsibleState.Expanded
-						));
-					}
+					const flatPosts = this.localPosts.filter(post => 
+						!post.filePath.includes('/drafts/') && !post.filePath.includes('/published/')
+					);
+					
+					// Add flat posts to drafts count for migration purposes
+					const totalDrafts = this.localDrafts.length + flatPosts.length;
+					
+					// Always show both sections, even if empty (like uploads)
+					categories.push(new MicroblogTreeItem(
+						`📝 Local Drafts (${totalDrafts})`,
+						vscode.TreeItemCollapsibleState.Expanded
+					));
+					
+					categories.push(new MicroblogTreeItem(
+						`📄 Published Posts (Local) (${this.localPublished.length})`,
+						vscode.TreeItemCollapsibleState.Expanded
+					));
 				} catch (error) {
 					console.error('[Micro.blog] Failed to load local posts:', error);
 				}
@@ -364,7 +382,21 @@ export class MicroblogTreeProvider implements vscode.TreeDataProvider<MicroblogT
 		} else {
 			// Show posts under categories
 			if (element.label.includes('Local Drafts')) {
-				return this.localPosts.map(localPost => new MicroblogTreeItem(
+				// Combine drafts from subfolder and flat structure (for migration)
+				const flatPosts = this.localPosts.filter(post => 
+					!post.filePath.includes('/drafts/') && !post.filePath.includes('/published/')
+				);
+				const allDrafts = [...this.localDrafts, ...flatPosts];
+				
+				return allDrafts.map(localPost => new MicroblogTreeItem(
+					localPost.title,
+					vscode.TreeItemCollapsibleState.None,
+					undefined,
+					undefined,
+					localPost
+				));
+			} else if (element.label.includes('Published Posts (Local)')) {
+				return this.localPublished.map(localPost => new MicroblogTreeItem(
 					localPost.title,
 					vscode.TreeItemCollapsibleState.None,
 					undefined,

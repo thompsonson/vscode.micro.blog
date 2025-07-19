@@ -394,7 +394,7 @@ export function activate(context: vscode.ExtensionContext) {
 					return;
 				}
 
-				const publishingService = new PublishingService(apiClient);
+				const publishingService = new PublishingService(apiClient, fileManager);
 
 				await vscode.window.withProgress({
 					location: vscode.ProgressLocation.Notification,

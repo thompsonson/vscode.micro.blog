@@ -4,18 +4,20 @@
 
 This is a VS Code extension for micro.blog integration built using **Domain Driven Design (DDD)** principles. Currently in **alpha development** with core features for content browsing, creation, and publishing.
 
-### Current Features (v0.4.20250719 - Alpha)
+### Current Features (v0.5.20250719 - Alpha)
 - **Authentication & Configuration**: Simple token-based setup with auto-domain discovery
 - **Content Browsing**: Read-only viewing of posts, drafts, and pages
 - **Local Content Creation**: New Post command with workspace integration
 - **Publishing**: Publish local drafts to micro.blog via Micropub API
+- **Draft to Published Organization**: Automatic file movement from `drafts/` to `published/` after successful publish
 - **Media Display**: View uploaded media files in tree view with click-to-view functionality
 - **Upload Viewing**: Click uploads to view images, metadata, and text file previews in webview panels
 - **Text Preview**: Preview content of text files (JSON, TXT, XML, etc.) with copy-to-clipboard functionality
-- **Enhanced Tree View**: Shows local drafts, pages, posts, and remote uploads
-- **File Management**: Automatic workspace structure and file operations
+- **Enhanced Tree View**: Shows local drafts, published posts (local), pages, posts, and remote uploads
+- **File Management**: Automatic workspace structure with `content/drafts/` and `content/published/` folders
+- **Migration Support**: Automatic migration of existing flat content structure to organized folders
 - **Real-time Updates**: File watcher provides instant tree view updates
-- **Quality Maintained**: 128 passing tests with comprehensive coverage
+- **Quality Maintained**: 114 passing tests with comprehensive coverage
 - **Development Tools**: Justfile for streamlined development workflow
 - **API Integration**: Full Micropub protocol support for posts, pages, and media
 
@@ -266,6 +268,17 @@ Cmd+Shift+P         # Command palette to test extension commands
 - Support for TXT, JSON, XML, CSV, YAML file preview
 - Copy-to-clipboard functionality for text content
 - Panel reuse pattern for better UX
+
+### **Draft to Published Organization (v0.5.20250719)**
+- Automatic file movement from `content/drafts/` to `content/published/` after successful publish
+- Enhanced LocalPost domain entity with `location: 'drafts' | 'published'` property
+- FileManager enhanced with folder creation, file movement, and migration logic
+- PublishingService integrated with file movement workflow
+- TreeProvider shows separate "📝 Local Drafts" and "📄 Published Posts (Local)" sections
+- Automatic migration of existing flat content structure to organized folders
+- Conflict resolution with timestamp-based auto-renaming
+- Progress notifications during file operations
+- Graceful error handling (publish success but move failure shows warning)
 
 ### **Recent Fixes**
 - Fixed tree view to always show uploads section even when empty

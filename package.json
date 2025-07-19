@@ -1,8 +1,8 @@
 {
   "name": "micro-blog-vscode",
   "displayName": "Micro.blog",
-  "description": "A VS Code extension for micro.blog integration with pages and uploads support",
-  "version": "0.4.20250719",
+  "description": "A VS Code extension for micro.blog integration with draft organization and publishing support",
+  "version": "0.5.20250719",
   "engines": {
     "vscode": "^1.74.0"
   },

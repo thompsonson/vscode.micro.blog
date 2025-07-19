@@ -28,12 +28,16 @@ A VS Code extension for micro.blog integration that lets you browse remote conte
 - **✍️ Markdown Support**: Full frontmatter support with title, status, type metadata
 - **🎯 Click-to-Edit**: Click local posts to open in VS Code editor
 
-#### **Publishing**
+#### **Publishing & File Organization**
 - **📤 One-Click Publishing**: Right-click local posts → "Publish to Micro.blog"
 - **✅ Content Validation**: Pre-publish validation with clear error messages
 - **🔄 Progress Feedback**: VS Code progress notifications during publishing
 - **🌐 Micropub Protocol**: Full support for micro.blog's publishing API
 - **🎯 Context Menu Integration**: Native VS Code right-click workflow
+- **📁 Automatic Organization**: Published drafts automatically move to `content/published/` folder
+- **🗂️ Structured Workflow**: Separate `content/drafts/` and `content/published/` folders
+- **📊 Enhanced Tree View**: "📝 Local Drafts" and "📄 Published Posts (Local)" sections
+- **🔄 Migration Support**: Existing flat content automatically migrated to drafts folder
 
 #### **Media Management & Upload Viewing**
 - **📁 Remote Uploads Display**: View all your uploaded media files in the tree
